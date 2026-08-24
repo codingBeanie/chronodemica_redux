@@ -1,4 +1,8 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+// Empty by default so every request is relative (e.g. `/api/...`) and resolves against
+// whatever origin served the page — the frontend's nginx (see nginx.conf) proxies `/api/`
+// to the backend container, and the Vite dev server does the same (see vite.config.ts).
+// This is what lets the same built image work behind any domain without a rebuild.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 let authToken: string | null = null;
 let currentWorldId: number | null = null;
