@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+# Backend data
+backend/data/
+*.db
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+
+# Logs
+*.log
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/
+
+# My Notes
+datamodels.md
+simulation.md
+
+# Local dev scripts
+dev.sh
+
