@@ -13,12 +13,14 @@ class VotingBehaviourStatementRow(SQLModel):
     statement_id: int
     topic_id: int
     approval: int
-    party_points: dict[int, float]
+    # Keyed by str(party_id), or "null" for the "Misc" bucket (see the service).
+    party_points: dict[str, float]
 
 
 class VotingBehaviourResponse(SQLModel):
     total_points: float
-    party_ids: list[int]
+    # None marks the "Misc" bucket: points from statements no real party approved.
+    party_ids: list[int | None]
     statements: list[VotingBehaviourStatementRow]
 
 

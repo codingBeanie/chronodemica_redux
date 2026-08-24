@@ -19,6 +19,7 @@ import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
+import { partyDisplayColor, partyDisplayName } from "../utils/partyDisplay";
 
 type SortKey = "party" | "votes" | "seats" | "in_government";
 
@@ -62,13 +63,12 @@ export function SimulationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previousPeriod?.id]);
 
-  const partyName = (id: number) => parties.find((p) => p.id === id)?.name ?? "-";
+  const partyName = (id: number | null) => partyDisplayName(id, parties);
   // Raw hex from user-defined party data, not a Mantine theme token — Recharts accepts any CSS color.
-  const partyColor = (id: number): MantineColor =>
-    (parties.find((p) => p.id === id)?.color_bg ?? "#adb5bd") as MantineColor;
+  const partyColor = (id: number | null): MantineColor => partyDisplayColor(id, parties) as MantineColor;
   const hasResults = votes.length > 0 || parliamentPeriods.length > 0;
 
-  const nationalTotals = new Map<number, number>();
+  const nationalTotals = new Map<number | null, number>();
   for (const vote of votes) {
     nationalTotals.set(vote.party_id, (nationalTotals.get(vote.party_id) ?? 0) + vote.votes);
   }
@@ -80,7 +80,7 @@ export function SimulationPage() {
   );
 
   const { sortKey, sortDir, toggleSort } = useSort<SortKey>("votes", "desc");
-  const getSortValue = (partyId: number, key: SortKey): string | number => {
+  const getSortValue = (partyId: number | null, key: SortKey): string | number => {
     if (key === "party") return partyName(partyId);
     if (key === "votes") return nationalTotals.get(partyId) ?? 0;
     const entry = parliamentPeriods.find((p) => p.party_id === partyId);
@@ -113,7 +113,7 @@ export function SimulationPage() {
   ];
   const percentFormatter = (value: number) => `${value.toFixed(1)}%`;
 
-  const previousNationalTotals = new Map<number, number>();
+  const previousNationalTotals = new Map<number | null, number>();
   for (const vote of previousVotes) {
     previousNationalTotals.set(vote.party_id, (previousNationalTotals.get(vote.party_id) ?? 0) + vote.votes);
   }
@@ -275,7 +275,7 @@ export function SimulationPage() {
                 </Table.Thead>
                 <Table.Tbody>
                   {sortedTablePartyIds.map((partyId) => (
-                    <Table.Tr key={partyId}>
+                    <Table.Tr key={String(partyId)}>
                       <Table.Td>{partyName(partyId)}</Table.Td>
                       <Table.Td ta="right">{(nationalTotals.get(partyId) ?? 0).toLocaleString()}</Table.Td>
                       <Table.Td ta="right">

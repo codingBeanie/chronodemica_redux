@@ -74,12 +74,14 @@ export interface VotingBehaviourStatementRow {
   statement_id: number;
   topic_id: number;
   approval: number;
+  // Keyed by String(party_id), or "null" for the "Misc" bucket (see VotingBehaviour.party_ids).
   party_points: Record<string, number>;
 }
 
 export interface VotingBehaviour {
   total_points: number;
-  party_ids: number[];
+  // null marks the "Misc" bucket: points from statements no real party approved.
+  party_ids: (number | null)[];
   statements: VotingBehaviourStatementRow[];
 }
 
@@ -142,7 +144,8 @@ export type PopStatementInput = Omit<PopStatement, "id">;
 export interface Votes {
   id: number;
   period_id: number;
-  party_id: number;
+  // null marks the "Misc" bucket: votes for statements no real party approved.
+  party_id: number | null;
   pop_id: number;
   votes: number;
 }

@@ -8,8 +8,9 @@ import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
+import { partyDisplayName } from "../utils/partyDisplay";
 
-type SortKey = "topic" | "statement" | "approval" | number;
+type SortKey = "topic" | "statement" | "approval" | number | null;
 
 export function VotingBehaviourPage() {
   const t = useTranslation();
@@ -38,7 +39,7 @@ export function VotingBehaviourPage() {
     votingBehaviourApi.get(selectedPeriodId, selectedPopId).then(setBehaviour);
   }, [selectedPeriodId, selectedPopId]);
 
-  const partyName = (id: number) => parties.find((p) => p.id === id)?.name ?? "-";
+  const partyName = (id: number | null) => partyDisplayName(id, parties);
   const topicName = (id: number) => topics.find((tp) => tp.id === id)?.name ?? "-";
   const statementText = (id: number) => statements.find((s) => s.id === id)?.text ?? "-";
 
@@ -50,10 +51,10 @@ export function VotingBehaviourPage() {
     return points.toFixed(1);
   };
 
-  const totalsByParty: Record<number, number> = {};
+  const totalsByParty: Record<string, number> = {};
   if (behaviour) {
     for (const partyId of behaviour.party_ids) {
-      totalsByParty[partyId] = behaviour.statements.reduce(
+      totalsByParty[String(partyId)] = behaviour.statements.reduce(
         (sum, row) => sum + (row.party_points[String(partyId)] ?? 0),
         0,
       );
@@ -134,7 +135,7 @@ export function VotingBehaviourPage() {
                   />
                   {behaviour.party_ids.map((partyId) => (
                     <SortableTh
-                      key={partyId}
+                      key={String(partyId)}
                       label={partyName(partyId)}
                       sortKey={partyId}
                       activeKey={sortKey}
@@ -152,7 +153,7 @@ export function VotingBehaviourPage() {
                     <Table.Td>{statementText(row.statement_id)}</Table.Td>
                     <Table.Td ta="right">{row.approval}%</Table.Td>
                     {behaviour.party_ids.map((partyId) => (
-                      <Table.Td key={partyId} ta="right">
+                      <Table.Td key={String(partyId)} ta="right">
                         {formatValue(row.party_points[String(partyId)] ?? 0)}
                       </Table.Td>
                     ))}
@@ -161,8 +162,8 @@ export function VotingBehaviourPage() {
                 <Table.Tr fw={700}>
                   <Table.Td colSpan={3}>{t.votingBehaviour.totalRowLabel}</Table.Td>
                   {behaviour.party_ids.map((partyId) => (
-                    <Table.Td key={partyId} ta="right">
-                      {formatValue(totalsByParty[partyId] ?? 0)}
+                    <Table.Td key={String(partyId)} ta="right">
+                      {formatValue(totalsByParty[String(partyId)] ?? 0)}
                     </Table.Td>
                   ))}
                 </Table.Tr>

@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from sqlmodel import Session, select
 
 from app.config.voting_systems import VOTING_SYSTEM_CONFIGS
-from app.db.seed import ensure_miscellaneous_party
 from app.models.parliament_period import ParliamentPeriod
 from app.models.party_period import PartyPeriod
 from app.models.party_statement import PartyStatement
@@ -37,7 +36,6 @@ def sainte_lague_apportion[K](votes: dict[K, int], seats: int) -> dict[K, int]:
 
 @dataclass
 class PeriodContext:
-    misc_party_id: int
     topic_periods: list[TopicPeriod]
     statements_by_topic: dict[int, list[Statement]]
     approving_parties_by_statement: dict[int, list[int]]
@@ -45,8 +43,6 @@ class PeriodContext:
 
 
 def load_period_context(session: Session, period: Period) -> PeriodContext:
-    misc_party = ensure_miscellaneous_party(session, period.world_id)
-
     topic_periods = session.exec(select(TopicPeriod).where(TopicPeriod.period_id == period.id)).all()
     party_periods = session.exec(select(PartyPeriod).where(PartyPeriod.period_id == period.id)).all()
     popularity_by_party = {pp.party_id: pp.popularity for pp in party_periods}
@@ -68,7 +64,6 @@ def load_period_context(session: Session, period: Period) -> PeriodContext:
         approving_parties_by_statement[ps.statement_id].append(ps.party_id)
 
     return PeriodContext(
-        misc_party_id=misc_party.id,
         topic_periods=topic_periods,
         statements_by_topic=statements_by_topic,
         approving_parties_by_statement=approving_parties_by_statement,
@@ -94,10 +89,14 @@ def compute_statement_points_for_pop(
     context: PeriodContext,
     pop_id: int,
     approval_by_pop_statement: dict[tuple[int, int], int],
-) -> dict[tuple[int, int], float]:
+) -> dict[tuple[int, int | None], float]:
     """Points earned by each party from each statement, for a single pop. Not yet
-    scaled to actual vote counts and not yet aggregated across statements."""
-    points_by_statement_party: dict[tuple[int, int], float] = defaultdict(float)
+    scaled to actual vote counts and not yet aggregated across statements.
+
+    A party id of None is the "Misc" bucket: points from statements no real
+    party approved, which never competes for parliamentary seats.
+    """
+    points_by_statement_party: dict[tuple[int, int | None], float] = defaultdict(float)
 
     for topic_period in context.topic_periods:
         total_points = 10 * topic_period.importance
@@ -111,7 +110,7 @@ def compute_statement_points_for_pop(
 
             approving_party_ids = context.approving_parties_by_statement.get(statement.id, [])
             if not approving_party_ids:
-                points_by_statement_party[(statement.id, context.misc_party_id)] += points
+                points_by_statement_party[(statement.id, None)] += points
                 continue
 
             popularities = {pid: context.popularity_by_party.get(pid, 0) for pid in approving_party_ids}
@@ -154,7 +153,7 @@ def run_simulation(session: Session, period: Period) -> None:
     pop_periods = session.exec(select(PopPeriod).where(PopPeriod.period_id == period.id)).all()
     approval_by_pop_statement = load_pop_statement_approvals(session, period.id)
 
-    national_totals: dict[int, int] = defaultdict(int)
+    national_totals: dict[int | None, int] = defaultdict(int)
 
     for pop_period in pop_periods:
         votes_cast = pop_period.population * pop_period.eligibility * pop_period.turnout
@@ -162,7 +161,7 @@ def run_simulation(session: Session, period: Period) -> None:
         statement_points = compute_statement_points_for_pop(
             context, pop_period.pop_id, approval_by_pop_statement
         )
-        pop_scores: dict[int, float] = defaultdict(float)
+        pop_scores: dict[int | None, float] = defaultdict(float)
         for (_statement_id, party_id), points in statement_points.items():
             pop_scores[party_id] += points
 
@@ -186,7 +185,9 @@ def run_simulation(session: Session, period: Period) -> None:
     if total_national_votes > 0:
         config = VOTING_SYSTEM_CONFIGS[period.voting_system]
         threshold = config.threshold_percent / 100 * total_national_votes
-        eligible = {pid: v for pid, v in national_totals.items() if v >= threshold}
+        eligible = {
+            pid: v for pid, v in national_totals.items() if v >= threshold and pid is not None
+        }
         if eligible:
             allocation = sainte_lague_apportion(eligible, period.seats)
             for party_id, seats in allocation.items():

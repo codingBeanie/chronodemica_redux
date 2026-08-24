@@ -2,7 +2,7 @@ services:
   backend:
     image: ghcr.io/codingbeanie/chronodemica_redux-backend:latest
     ports:
-      - "8000:8000"
+      - "8010:8010"
     environment:
       DATABASE_URL: sqlite:////data/chronodemica.db
       CORS_ORIGINS: '["http://localhost:5173"]'

@@ -40,12 +40,83 @@ def _migrate_seats_from_world_to_period() -> None:
             conn.execute(text("ALTER TABLE world DROP COLUMN seats"))
 
 
+def _rename_votes_table_if_party_id_not_null() -> None:
+    """First half of the migration dropping the "Miscellaneous" placeholder party.
+
+    `votes.party_id` used to be NOT NULL; unattributed votes (a statement no
+    real party approved) were stored against a real, DB-persisted party named
+    "Miscellaneous". That party never made sense as stored data — it's now a
+    purely virtual bucket (`party_id IS NULL`), since it isn't a real party
+    and must never win parliamentary seats.
+
+    SQLite can't drop a NOT NULL constraint in place, so this renames the old
+    table out of the way; `create_all()` (called right after, in `init_db()`)
+    then builds a fresh `votes` table matching the current, nullable model.
+    `_finish_votes_migration_and_drop_misc_party()` copies the data back in
+    and cleans up the old Misc party afterwards.
+    """
+    db_inspector = inspect(engine)
+    if not db_inspector.has_table("votes"):
+        return
+
+    party_id_column = next(
+        (col for col in db_inspector.get_columns("votes") if col["name"] == "party_id"), None
+    )
+    if party_id_column is None or party_id_column["nullable"]:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE votes RENAME TO votes_old"))
+
+
+def _finish_votes_migration_and_drop_misc_party() -> None:
+    """Second half of the migration started in `_rename_votes_table_if_party_id_not_null()`.
+
+    Must run after `create_all()` has (re)created `votes` from the current
+    model. Copies the old rows into it, folds any votes that belonged to the
+    old "Miscellaneous" party into the virtual Misc bucket (`party_id = NULL`),
+    and removes that placeholder party and its now-meaningless seats.
+    """
+    db_inspector = inspect(engine)
+    if not db_inspector.has_table("votes_old"):
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO votes (id, votes, period_id, party_id, pop_id) "
+                "SELECT id, votes, period_id, party_id, pop_id FROM votes_old"
+            )
+        )
+        conn.execute(text("DROP TABLE votes_old"))
+
+        misc_party_ids = [
+            row[0]
+            for row in conn.execute(
+                text("SELECT id FROM party WHERE name = 'Miscellaneous' AND abbreviation = 'MISC'")
+            ).fetchall()
+        ]
+        if not misc_party_ids:
+            return
+
+        placeholders = ",".join(str(party_id) for party_id in misc_party_ids)
+        conn.execute(text(f"UPDATE votes SET party_id = NULL WHERE party_id IN ({placeholders})"))
+        for dependent_table in ("parliamentperiod", "partyperiod", "partystatement"):
+            if db_inspector.has_table(dependent_table):
+                conn.execute(
+                    text(f"DELETE FROM {dependent_table} WHERE party_id IN ({placeholders})")
+                )
+        conn.execute(text(f"DELETE FROM party WHERE id IN ({placeholders})"))
+
+
 def init_db() -> None:
     db_path = make_url(settings.database_url).database
     if db_path and db_path != ":memory:":
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     _migrate_seats_from_world_to_period()
+    _rename_votes_table_if_party_id_not_null()
     SQLModel.metadata.create_all(engine)
+    _finish_votes_migration_and_drop_misc_party()
 
 
 def get_session() -> Generator[Session, None, None]:

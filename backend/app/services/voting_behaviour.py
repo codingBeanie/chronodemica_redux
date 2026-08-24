@@ -15,10 +15,14 @@ def compute_voting_behaviour(session: Session, period: Period, pop_id: int) -> d
     approval_by_pop_statement = load_pop_statement_approvals(session, period.id, pop_id)
     statement_points = compute_statement_points_for_pop(context, pop_id, approval_by_pop_statement)
 
-    points_by_statement: dict[int, dict[int, float]] = defaultdict(dict)
-    totals_by_party: dict[int, float] = defaultdict(float)
+    # party_id is None for the "Misc" bucket (statements no real party approved).
+    # Dict keys must be strings on the wire; "null" is used explicitly rather than
+    # relying on json's default (inconsistent) stringification of a None key, and
+    # matches the frontend's own `String(partyId)` lookup for that bucket.
+    points_by_statement: dict[int, dict[str, float]] = defaultdict(dict)
+    totals_by_party: dict[int | None, float] = defaultdict(float)
     for (statement_id, party_id), points in statement_points.items():
-        points_by_statement[statement_id][party_id] = points
+        points_by_statement[statement_id]["null" if party_id is None else str(party_id)] = points
         totals_by_party[party_id] += points
 
     party_ids = sorted(totals_by_party, key=lambda pid: totals_by_party[pid], reverse=True)

@@ -78,7 +78,7 @@ population group to see exactly which statements drove the outcome.
 ```bash
 cd backend
 uv sync
-uv run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --port 8010
 ```
 
 ### Frontend
@@ -105,7 +105,7 @@ services:
   backend:
     image: ghcr.io/codingbeanie/chronodemica_redux-backend:latest
     ports:
-      - "8000:8000"
+      - "8010:8010"
     environment:
       DATABASE_URL: sqlite:////data/chronodemica.db
       CORS_ORIGINS: '["http://localhost:5173"]'
@@ -132,7 +132,7 @@ docker compose up -d
 ```
 
 The frontend will be available at `http://localhost:5173` and the backend at
-`http://localhost:8000`. Application data is stored in a Docker volume, so it persists across
+`http://localhost:8010`. Application data is stored in a Docker volume, so it persists across
 restarts and image updates. To upgrade to the latest published image, run
 `docker compose pull && docker compose up -d` again.
 
