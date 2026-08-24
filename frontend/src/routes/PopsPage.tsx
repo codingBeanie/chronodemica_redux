@@ -6,7 +6,9 @@ import { useState } from "react";
 
 import { popsApi } from "../api/resources";
 import type { Pop, PopInput } from "../api/types";
+import { SortableTh } from "../components/SortableTh";
 import { useCrud } from "../hooks/useCrud";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PopInput = {
@@ -14,9 +16,13 @@ const emptyValues: PopInput = {
   name: "",
 };
 
+type SortKey = "name";
+
 export function PopsPage() {
   const t = useTranslation();
   const { items, loading, create, update, remove } = useCrud(popsApi);
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
+  const sortedItems = [...items].sort((a, b) => compareSortValues(a.name, b.name, sortDir));
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Pop | null>(null);
   const form = useForm<PopInput>({ initialValues: emptyValues });
@@ -66,12 +72,18 @@ export function PopsPage() {
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>{t.pops.columnGroup}</Table.Th>
+            <SortableTh
+              label={t.pops.columnGroup}
+              sortKey="name"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
             <Table.Th />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {items.map((pop) => (
+          {sortedItems.map((pop) => (
             <Table.Tr key={pop.id} onClick={() => openEdit(pop)} style={{ cursor: "pointer" }}>
               <Table.Td>
                 <Badge variant="light" mr="xs">

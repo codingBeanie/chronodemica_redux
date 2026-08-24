@@ -161,6 +161,7 @@ function MainShell() {
     <AppShell
       header={{ height: 60 }}
       navbar={{ width: 260, breakpoint: "sm", collapsed: { mobile: !opened } }}
+      footer={{ height: 28 }}
       padding="md"
     >
       <AppShell.Header>
@@ -222,6 +223,14 @@ function MainShell() {
           ))}
         </Routes>
       </AppShell.Main>
+
+      <AppShell.Footer>
+        <Group h="100%" px="md" justify="flex-end">
+          <Text size="xs" c="dimmed">
+            v{__APP_VERSION__}
+          </Text>
+        </Group>
+      </AppShell.Footer>
     </AppShell>
   );
 }

@@ -6,8 +6,10 @@ import { useState } from "react";
 
 import { periodsApi } from "../api/resources";
 import type { Period, PeriodInput } from "../api/types";
+import { SortableTh } from "../components/SortableTh";
 import { VOTING_SYSTEMS, votingSystemLabel } from "../constants/votingSystems";
 import { usePeriodContext } from "../context/PeriodContext";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PeriodInput = {
@@ -18,9 +20,17 @@ const emptyValues: PeriodInput = {
   seats: 100,
 };
 
+type SortKey = "voting_date" | "start_date" | "end_date" | "voting_system" | "seats";
+
 export function PeriodsPage() {
   const t = useTranslation();
   const { periods, loading, refresh } = usePeriodContext();
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("voting_date");
+  const getSortValue = (period: Period, key: SortKey): string | number =>
+    key === "voting_system" ? votingSystemLabel(period.voting_system) : period[key];
+  const sortedPeriods = [...periods].sort((a, b) =>
+    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
+  );
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Period | null>(null);
   const form = useForm<PeriodInput>({ initialValues: emptyValues });
@@ -75,16 +85,47 @@ export function PeriodsPage() {
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>{t.periods.columnVotingDate}</Table.Th>
-            <Table.Th>{t.periods.columnStartDate}</Table.Th>
-            <Table.Th>{t.periods.columnEndDate}</Table.Th>
-            <Table.Th>{t.periods.columnVotingSystem}</Table.Th>
-            <Table.Th ta="right">{t.periods.columnSeats}</Table.Th>
+            <SortableTh
+              label={t.periods.columnVotingDate}
+              sortKey="voting_date"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.periods.columnStartDate}
+              sortKey="start_date"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.periods.columnEndDate}
+              sortKey="end_date"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.periods.columnVotingSystem}
+              sortKey="voting_system"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.periods.columnSeats}
+              sortKey="seats"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+              align="right"
+            />
             <Table.Th />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {periods.map((period) => (
+          {sortedPeriods.map((period) => (
             <Table.Tr key={period.id} onClick={() => openEdit(period)} style={{ cursor: "pointer" }}>
               <Table.Td>{period.voting_date}</Table.Td>
               <Table.Td>{period.start_date}</Table.Td>

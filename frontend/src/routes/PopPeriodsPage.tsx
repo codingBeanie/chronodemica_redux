@@ -7,12 +7,16 @@ import { useEffect, useState } from "react";
 import { popPeriodsApi, popsApi } from "../api/resources";
 import type { Pop, PopPeriod, PopPeriodInput } from "../api/types";
 import { PeriodSelector } from "../components/PeriodSelector";
+import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { annualGrowthPercent, formatGrowthPercent, yearsBetween } from "../utils/growth";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PopPeriodInput = { pop_id: 0, period_id: 0, population: 0, turnout: 0.5, eligibility: 0.8 };
+
+type SortKey = "pop" | "population" | "turnout" | "eligibility";
 
 export function PopPeriodsPage() {
   const t = useTranslation();
@@ -21,6 +25,7 @@ export function PopPeriodsPage() {
     period_id: selectedPeriodId ?? 0,
   });
   const [pops, setPops] = useState<Pop[]>([]);
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("pop");
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<PopPeriod | null>(null);
   const [previousItems, setPreviousItems] = useState<PopPeriod[]>([]);
@@ -48,6 +53,12 @@ export function PopPeriodsPage() {
   const popOptions = pops.map((p) => ({ value: String(p.id), label: p.name }));
   const previousPopulationFor = (popId: number) =>
     previousItems.find((p) => p.pop_id === popId)?.population ?? null;
+
+  const getSortValue = (entry: PopPeriod, key: SortKey): string | number =>
+    key === "pop" ? popName(entry.pop_id) : entry[key];
+  const sortedItems = [...items].sort((a, b) =>
+    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
+  );
 
   const years = previousPeriod && currentPeriod ? yearsBetween(previousPeriod.voting_date, currentPeriod.voting_date) : null;
 
@@ -126,15 +137,39 @@ export function PopPeriodsPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{t.popPeriods.columnPop}</Table.Th>
-              <Table.Th>{t.popPeriods.columnPopulation}</Table.Th>
-              <Table.Th>{t.popPeriods.columnTurnout}</Table.Th>
-              <Table.Th>{t.popPeriods.columnEligibility}</Table.Th>
+              <SortableTh
+                label={t.popPeriods.columnPop}
+                sortKey="pop"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableTh
+                label={t.popPeriods.columnPopulation}
+                sortKey="population"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableTh
+                label={t.popPeriods.columnTurnout}
+                sortKey="turnout"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableTh
+                label={t.popPeriods.columnEligibility}
+                sortKey="eligibility"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {items.map((entry) => (
+            {sortedItems.map((entry) => (
               <Table.Tr key={entry.id} onClick={() => openEdit(entry)} style={{ cursor: "pointer" }}>
                 <Table.Td>{popName(entry.pop_id)}</Table.Td>
                 <Table.Td>{entry.population.toLocaleString()}</Table.Td>

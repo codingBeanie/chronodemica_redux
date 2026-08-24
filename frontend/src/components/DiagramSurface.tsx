@@ -10,12 +10,12 @@ import type { CSSProperties, ReactNode } from "react";
 const SURFACE_VARS = {
   background: "#FFFFFF",
   "--mantine-color-body": "#FFFFFF",
-  "--mantine-color-text": "var(--mantine-color-gray-8)",
-  "--mantine-color-dimmed": "var(--mantine-color-gray-6)",
-  "--chart-text-color": "var(--mantine-color-gray-7)",
+  "--mantine-color-text": "#1A1A1A",
+  "--mantine-color-dimmed": "#495057",
+  "--chart-text-color": "#1A1A1A",
   "--chart-grid-color": "rgba(173, 181, 189, 0.6)",
   "--chart-cursor-fill": "rgba(173, 181, 189, 0.15)",
-  "--chart-bar-label-color": "var(--mantine-color-gray-7)",
+  "--chart-bar-label-color": "#1A1A1A",
 } as CSSProperties;
 
 export function DiagramSurface({ children, mb }: { children: ReactNode; mb?: MantineSpacing }) {

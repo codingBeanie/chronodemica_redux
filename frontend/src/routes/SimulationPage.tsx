@@ -15,8 +15,12 @@ import type { ParliamentPeriod, Party, VotingSystemConfig, Votes } from "../api/
 import { DiagramSurface } from "../components/DiagramSurface";
 import { InGovernmentIcon } from "../components/InGovernmentIcon";
 import { PeriodSelector } from "../components/PeriodSelector";
+import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
+
+type SortKey = "party" | "votes" | "seats" | "in_government";
 
 export function SimulationPage() {
   const t = useTranslation();
@@ -69,8 +73,22 @@ export function SimulationPage() {
     nationalTotals.set(vote.party_id, (nationalTotals.get(vote.party_id) ?? 0) + vote.votes);
   }
   const partyIds = [...new Set([...nationalTotals.keys(), ...parliamentPeriods.map((p) => p.party_id)])];
+  // Chart order is always votes-descending; the results table below has its own
+  // independent, user-toggleable sort (see sortedTablePartyIds).
   const sortedPartyIds = [...partyIds].sort(
     (a, b) => (nationalTotals.get(b) ?? 0) - (nationalTotals.get(a) ?? 0),
+  );
+
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("votes", "desc");
+  const getSortValue = (partyId: number, key: SortKey): string | number => {
+    if (key === "party") return partyName(partyId);
+    if (key === "votes") return nationalTotals.get(partyId) ?? 0;
+    const entry = parliamentPeriods.find((p) => p.party_id === partyId);
+    if (key === "in_government") return entry?.in_government ? 1 : 0;
+    return entry?.seats ?? 0;
+  };
+  const sortedTablePartyIds = [...partyIds].sort((a, b) =>
+    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
   );
 
   const selectedPeriod = periods.find((p) => p.id === selectedPeriodId);
@@ -223,14 +241,40 @@ export function SimulationPage() {
               <Table striped highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>{t.simulation.columnParty}</Table.Th>
-                    <Table.Th ta="right">{t.simulation.columnNationalVotes}</Table.Th>
-                    <Table.Th ta="right">{t.simulation.columnSeats}</Table.Th>
-                    <Table.Th>{t.parliamentPeriods.columnInGovernment}</Table.Th>
+                    <SortableTh
+                      label={t.simulation.columnParty}
+                      sortKey="party"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortableTh
+                      label={t.simulation.columnNationalVotes}
+                      sortKey="votes"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={toggleSort}
+                      align="right"
+                    />
+                    <SortableTh
+                      label={t.simulation.columnSeats}
+                      sortKey="seats"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={toggleSort}
+                      align="right"
+                    />
+                    <SortableTh
+                      label={t.parliamentPeriods.columnInGovernment}
+                      sortKey="in_government"
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={toggleSort}
+                    />
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {sortedPartyIds.map((partyId) => (
+                  {sortedTablePartyIds.map((partyId) => (
                     <Table.Tr key={partyId}>
                       <Table.Td>{partyName(partyId)}</Table.Td>
                       <Table.Td ta="right">{(nationalTotals.get(partyId) ?? 0).toLocaleString()}</Table.Td>

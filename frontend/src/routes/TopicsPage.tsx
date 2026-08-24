@@ -6,7 +6,9 @@ import { useState } from "react";
 
 import { statementsApi, topicsApi } from "../api/resources";
 import type { Statement, Topic, TopicInput } from "../api/types";
+import { SortableTh } from "../components/SortableTh";
 import { useCrud } from "../hooks/useCrud";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: TopicInput = {
@@ -14,9 +16,13 @@ const emptyValues: TopicInput = {
   description: "",
 };
 
+type SortKey = "name" | "description";
+
 export function TopicsPage() {
   const t = useTranslation();
   const { items, loading, create, update, remove } = useCrud(topicsApi);
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
+  const sortedItems = [...items].sort((a, b) => compareSortValues(a[sortKey], b[sortKey], sortDir));
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Topic | null>(null);
   const form = useForm<TopicInput>({ initialValues: emptyValues });
@@ -103,13 +109,25 @@ export function TopicsPage() {
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>{t.topics.columnName}</Table.Th>
-            <Table.Th>{t.topics.columnDescription}</Table.Th>
+            <SortableTh
+              label={t.topics.columnName}
+              sortKey="name"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.topics.columnDescription}
+              sortKey="description"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
             <Table.Th />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {items.map((topic) => (
+          {sortedItems.map((topic) => (
             <Table.Tr key={topic.id} onClick={() => openEdit(topic)} style={{ cursor: "pointer" }}>
               <Table.Td>{topic.name}</Table.Td>
               <Table.Td>{topic.description}</Table.Td>

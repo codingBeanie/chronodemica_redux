@@ -30,7 +30,10 @@ dist/
 # My Notes
 datamodels.md
 simulation.md
+to-do.md
 
 # Local dev scripts
 dev.sh
+release.sh
+
 

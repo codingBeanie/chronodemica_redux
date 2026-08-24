@@ -6,16 +6,22 @@ import { useRef, useState } from "react";
 
 import { worldApi, worldsApi } from "../api/resources";
 import type { World, WorldInput } from "../api/types";
+import { SortableTh } from "../components/SortableTh";
 import { usePeriodContextOptional } from "../context/PeriodContext";
 import { useWorldContext } from "../context/WorldContext";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: WorldInput = { name: "", parliament_name: "" };
+
+type SortKey = "name" | "parliament_name";
 
 export function WorldsPage() {
   const t = useTranslation();
   const { worlds, selectedWorldId, setSelectedWorldId, refresh } = useWorldContext();
   const periodCtx = usePeriodContextOptional();
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
+  const sortedWorlds = [...worlds].sort((a, b) => compareSortValues(a[sortKey], b[sortKey], sortDir));
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<World | null>(null);
   const [seeding, setSeeding] = useState(false);
@@ -147,14 +153,26 @@ export function WorldsPage() {
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>{t.worlds.columnName}</Table.Th>
-            <Table.Th>{t.worlds.columnParliament}</Table.Th>
+            <SortableTh
+              label={t.worlds.columnName}
+              sortKey="name"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.worlds.columnParliament}
+              sortKey="parliament_name"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
             <Table.Th />
             <Table.Th />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {worlds.map((world) => (
+          {sortedWorlds.map((world) => (
             <Table.Tr key={world.id} onClick={() => openEdit(world)} style={{ cursor: "pointer" }}>
               <Table.Td>{world.name}</Table.Td>
               <Table.Td>{world.parliament_name}</Table.Td>

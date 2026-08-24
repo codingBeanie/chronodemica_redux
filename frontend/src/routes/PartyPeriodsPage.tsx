@@ -7,11 +7,15 @@ import { useEffect, useState } from "react";
 import { partiesApi, partyPeriodsApi } from "../api/resources";
 import type { Party, PartyPeriod, PartyPeriodInput } from "../api/types";
 import { PeriodSelector } from "../components/PeriodSelector";
+import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PartyPeriodInput = { party_id: 0, period_id: 0, popularity: 10 };
+
+type SortKey = "party" | "popularity";
 
 export function PartyPeriodsPage() {
   const t = useTranslation();
@@ -20,6 +24,7 @@ export function PartyPeriodsPage() {
     period_id: selectedPeriodId ?? 0,
   });
   const [parties, setParties] = useState<Party[]>([]);
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("party");
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<PartyPeriod | null>(null);
   const form = useForm<PartyPeriodInput>({ initialValues: emptyValues });
@@ -30,6 +35,12 @@ export function PartyPeriodsPage() {
 
   const partyName = (id: number) => parties.find((p) => p.id === id)?.name ?? "-";
   const partyOptions = parties.map((p) => ({ value: String(p.id), label: p.name }));
+
+  const getSortValue = (entry: PartyPeriod, key: SortKey): string | number =>
+    key === "party" ? partyName(entry.party_id) : entry.popularity;
+  const sortedItems = [...items].sort((a, b) =>
+    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -78,13 +89,25 @@ export function PartyPeriodsPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{t.partyPeriods.columnParty}</Table.Th>
-              <Table.Th>{t.partyPeriods.columnPopularity}</Table.Th>
+              <SortableTh
+                label={t.partyPeriods.columnParty}
+                sortKey="party"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableTh
+                label={t.partyPeriods.columnPopularity}
+                sortKey="popularity"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {items.map((entry) => (
+            {sortedItems.map((entry) => (
               <Table.Tr key={entry.id} onClick={() => openEdit(entry)} style={{ cursor: "pointer" }}>
                 <Table.Td>{partyName(entry.party_id)}</Table.Td>
                 <Table.Td>{entry.popularity}</Table.Td>

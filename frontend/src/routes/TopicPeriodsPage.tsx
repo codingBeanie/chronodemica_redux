@@ -32,12 +32,16 @@ import type {
   TopicPeriodInput,
 } from "../api/types";
 import { PeriodSelector } from "../components/PeriodSelector";
+import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: TopicPeriodInput = { topic_id: 0, period_id: 0, importance: 10 };
 const NONE_VALUE = "__none__";
+
+type SortKey = "topic" | "importance";
 
 function approvalKey(popId: number, statementId: number): string {
   return `${popId}-${statementId}`;
@@ -70,6 +74,13 @@ export function TopicPeriodsPage() {
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "-";
   const availableTopics = topics.filter(
     (topic) => editing?.topic_id === topic.id || !items.some((item) => item.topic_id === topic.id),
+  );
+
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("topic");
+  const getSortValue = (entry: TopicPeriod, key: SortKey): string | number =>
+    key === "topic" ? topicName(entry.topic_id) : entry.importance;
+  const sortedItems = [...items].sort((a, b) =>
+    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
   );
 
   const loadStatements = async (topicId: number) => {
@@ -208,13 +219,25 @@ export function TopicPeriodsPage() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{t.topicPeriods.columnTopic}</Table.Th>
-              <Table.Th>{t.topicPeriods.columnImportance}</Table.Th>
+              <SortableTh
+                label={t.topicPeriods.columnTopic}
+                sortKey="topic"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableTh
+                label={t.topicPeriods.columnImportance}
+                sortKey="importance"
+                activeKey={sortKey}
+                direction={sortDir}
+                onSort={toggleSort}
+              />
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {items.map((entry) => (
+            {sortedItems.map((entry) => (
               <Table.Tr key={entry.id} onClick={() => openEdit(entry)} style={{ cursor: "pointer" }}>
                 <Table.Td>{topicName(entry.topic_id)}</Table.Td>
                 <Table.Td>{entry.importance}</Table.Td>

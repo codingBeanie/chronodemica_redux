@@ -1,11 +1,12 @@
 import { Group, Select, Switch, Table, Text } from "@mantine/core";
-import { IconChevronDown, IconChevronUp, IconSelector } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
 import { partiesApi, popsApi, statementsApi, topicsApi, votingBehaviourApi } from "../api/resources";
 import type { Party, Pop, Statement, Topic, VotingBehaviour, VotingBehaviourStatementRow } from "../api/types";
 import { PeriodSelector } from "../components/PeriodSelector";
+import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 type SortKey = "topic" | "statement" | "approval" | number;
@@ -20,8 +21,7 @@ export function VotingBehaviourPage() {
   const [selectedPopId, setSelectedPopId] = useState<number | null>(null);
   const [asPercent, setAsPercent] = useState(false);
   const [behaviour, setBehaviour] = useState<VotingBehaviour | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("topic");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("topic");
 
   useEffect(() => {
     popsApi.list().then(setPops);
@@ -68,41 +68,10 @@ export function VotingBehaviourPage() {
   };
 
   const sortedStatements = behaviour
-    ? [...behaviour.statements].sort((a, b) => {
-        const va = getSortValue(a, sortKey);
-        const vb = getSortValue(b, sortKey);
-        const cmp =
-          typeof va === "string" && typeof vb === "string" ? va.localeCompare(vb) : (va as number) - (vb as number);
-        return sortDir === "asc" ? cmp : -cmp;
-      })
+    ? [...behaviour.statements].sort((a, b) =>
+        compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
+      )
     : [];
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  };
-
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column) return <IconSelector size={14} opacity={0.4} />;
-    return sortDir === "asc" ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />;
-  };
-
-  const sortableTh = (label: string, column: SortKey, align: "left" | "right" = "left") => (
-    <Table.Th
-      onClick={() => toggleSort(column)}
-      style={{ cursor: "pointer", userSelect: "none" }}
-      ta={align}
-    >
-      <Group gap={4} wrap="nowrap" justify={align === "right" ? "flex-end" : "flex-start"}>
-        <span>{label}</span>
-        <SortIcon column={column} />
-      </Group>
-    </Table.Th>
-  );
 
   return (
     <>
@@ -141,10 +110,39 @@ export function VotingBehaviourPage() {
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  {sortableTh(t.votingBehaviour.columnTopic, "topic")}
-                  {sortableTh(t.votingBehaviour.columnStatement, "statement")}
-                  {sortableTh(t.votingBehaviour.columnApproval, "approval", "right")}
-                  {behaviour.party_ids.map((partyId) => sortableTh(partyName(partyId), partyId, "right"))}
+                  <SortableTh
+                    label={t.votingBehaviour.columnTopic}
+                    sortKey="topic"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableTh
+                    label={t.votingBehaviour.columnStatement}
+                    sortKey="statement"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableTh
+                    label={t.votingBehaviour.columnApproval}
+                    sortKey="approval"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  {behaviour.party_ids.map((partyId) => (
+                    <SortableTh
+                      key={partyId}
+                      label={partyName(partyId)}
+                      sortKey={partyId}
+                      activeKey={sortKey}
+                      direction={sortDir}
+                      onSort={toggleSort}
+                      align="right"
+                    />
+                  ))}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>

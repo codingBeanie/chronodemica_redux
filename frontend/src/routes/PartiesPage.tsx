@@ -6,7 +6,9 @@ import { useState } from "react";
 
 import { partiesApi } from "../api/resources";
 import type { Party, PartyInput } from "../api/types";
+import { SortableTh } from "../components/SortableTh";
 import { useCrud } from "../hooks/useCrud";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PartyInput = {
@@ -19,9 +21,17 @@ const emptyValues: PartyInput = {
   seat_orientation: 50,
 };
 
+type SortKey = "name" | "founded" | "dissolved" | "seat_orientation";
+
 export function PartiesPage() {
   const t = useTranslation();
   const { items, loading, create, update, remove } = useCrud(partiesApi);
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
+  const getSortValue = (party: Party, key: SortKey): string | number =>
+    key === "founded" || key === "dissolved" ? (party[key] ?? -Infinity) : party[key];
+  const sortedItems = [...items].sort((a, b) =>
+    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
+  );
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Party | null>(null);
   const form = useForm<PartyInput>({ initialValues: emptyValues });
@@ -76,15 +86,39 @@ export function PartiesPage() {
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>{t.parties.columnParty}</Table.Th>
-            <Table.Th>{t.parties.columnFounded}</Table.Th>
-            <Table.Th>{t.parties.columnDissolved}</Table.Th>
-            <Table.Th>{t.parties.columnSeatOrientation}</Table.Th>
+            <SortableTh
+              label={t.parties.columnParty}
+              sortKey="name"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.parties.columnFounded}
+              sortKey="founded"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.parties.columnDissolved}
+              sortKey="dissolved"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
+            <SortableTh
+              label={t.parties.columnSeatOrientation}
+              sortKey="seat_orientation"
+              activeKey={sortKey}
+              direction={sortDir}
+              onSort={toggleSort}
+            />
             <Table.Th />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {items.map((party) => (
+          {sortedItems.map((party) => (
             <Table.Tr key={party.id} onClick={() => openEdit(party)} style={{ cursor: "pointer" }}>
               <Table.Td>
                 <Badge color={party.color_bg} style={{ color: party.color_text }} mr="xs">
