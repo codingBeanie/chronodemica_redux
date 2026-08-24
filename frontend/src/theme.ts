@@ -101,7 +101,7 @@ function buildRamp(
     ramp[i] = rgbToHex(hslToRgb([h, newS, newL]));
   }
 
-  return ramp as MantineColorsTuple;
+  return ramp as unknown as MantineColorsTuple;
 }
 
 /** A low-saturation neutral ramp for dark-mode surfaces, in the given hue. */
