@@ -1,6 +1,6 @@
 services:
   backend:
-    build: ./backend
+    image: ghcr.io/codingbeanie/chronodemica_redux-backend:latest
     ports:
       - "8000:8000"
     environment:
@@ -8,13 +8,15 @@ services:
       CORS_ORIGINS: '["http://localhost:5173"]'
     volumes:
       - backend_data:/data
+    restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    image: ghcr.io/codingbeanie/chronodemica_redux-frontend:latest
     ports:
       - "5173:80"
     depends_on:
       - backend
+    restart: unless-stopped
 
 volumes:
   backend_data:

@@ -96,24 +96,51 @@ and password for this installation; from there you can create your first world.
 
 ## Running with Docker
 
-The repository includes a `docker-compose.yml` along with a `Dockerfile` for the backend and the
-frontend (built as a static bundle and served with nginx). Build and run both services with:
+Every push to `master` builds and publishes ready-to-use images to the GitHub Container Registry,
+so self-hosting Chronodemica does not require a local build. Save the following as
+`docker-compose.yml`:
+
+```yaml
+services:
+  backend:
+    image: ghcr.io/codingbeanie/chronodemica_redux-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////data/chronodemica.db
+      CORS_ORIGINS: '["http://localhost:5173"]'
+    volumes:
+      - backend_data:/data
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/codingbeanie/chronodemica_redux-frontend:latest
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_data:
+```
+
+Then start it with:
 
 ```bash
-docker compose up --build
+docker compose up -d
 ```
 
 The frontend will be available at `http://localhost:5173` and the backend at
 `http://localhost:8000`. Application data is stored in a Docker volume, so it persists across
-restarts.
+restarts and image updates. To upgrade to the latest published image, run
+`docker compose pull && docker compose up -d` again.
 
-Pre-built images are not published yet — this currently builds from source. Publishing ready-to-pull
-images to a container registry so Chronodemica can be self-hosted without a local build is planned
-for a future release.
+This same repository can still be built locally instead — see `backend/Dockerfile` and
+`frontend/Dockerfile` — for example while developing against a modified copy of the code.
 
 ## Roadmap
 
-- Publish pre-built Docker images to a container registry
 - Broader authentication options (OIDC support, e.g. via Pocket ID) beyond the current single-user
   login
 
