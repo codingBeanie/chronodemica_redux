@@ -3,6 +3,7 @@ import "@mantine/notifications/styles.css";
 import "@mantine/charts/styles.css";
 
 import { MantineProvider } from "@mantine/core";
+import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -17,13 +18,15 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto" cssVariablesResolver={cssVariablesResolver}>
       <Notifications />
-      <I18nProvider locale="en">
-        <AuthProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </AuthProvider>
-      </I18nProvider>
+      <ModalsProvider>
+        <I18nProvider locale="en">
+          <AuthProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthProvider>
+        </I18nProvider>
+      </ModalsProvider>
     </MantineProvider>
   </StrictMode>,
 );

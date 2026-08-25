@@ -1,13 +1,4 @@
-import {
-  Button,
-  Divider,
-  Modal,
-  NumberInput,
-  Select,
-  Table,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { Button, Divider, Modal, NumberInput, Select, Table, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -36,17 +27,19 @@ import type {
   TopicPeriod,
   TopicPeriodInput,
 } from "../api/types";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
-import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
-import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: TopicPeriodInput = { topic_id: 0, period_id: 0, importance: 10 };
 const NONE_VALUE = "__none__";
 
-type SortKey = "topic" | "importance";
+type AddedSortKey = "topic" | "importance" | "actions";
+type AvailableSortKey = "name" | "description";
 
 function approvalKey(popId: number, statementId: number): string {
   return `${popId}-${statementId}`;
@@ -55,7 +48,7 @@ function approvalKey(popId: number, statementId: number): string {
 export function TopicPeriodsPage() {
   const t = useTranslation();
   const { selectedPeriodId } = usePeriodContext();
-  const { items, loading, create, update, remove } = useCrud(topicPeriodsApi, {
+  const { items, loading, error, create, update, remove } = useCrud(topicPeriodsApi, {
     period_id: selectedPeriodId ?? 0,
   });
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -67,7 +60,9 @@ export function TopicPeriodsPage() {
 
   const [statements, setStatements] = useState<Statement[]>([]);
   const [partyStatements, setPartyStatements] = useState<PartyStatement[]>([]);
+  const [partyApprovalDrafts, setPartyApprovalDrafts] = useState<Record<number, number | null>>({});
   const [popApprovalDrafts, setPopApprovalDrafts] = useState<Record<string, number>>({});
+  const [popApprovalOriginal, setPopApprovalOriginal] = useState<Record<string, number>>({});
   const [popStatementIds, setPopStatementIds] = useState<Record<string, number>>({});
   const [partyPeriods, setPartyPeriods] = useState<PartyPeriod[]>([]);
   const [popPeriods, setPopPeriods] = useState<PopPeriod[]>([]);
@@ -95,20 +90,8 @@ export function TopicPeriodsPage() {
 
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "-";
 
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("topic");
-  const getSortValue = (entry: TopicPeriod, key: SortKey): string | number =>
-    key === "topic" ? topicName(entry.topic_id) : entry.importance;
-  const sortedItems = [...items].sort((a, b) =>
-    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
-  );
-
   // --- Available topics (not yet added to this period) ---
   const [availableFilter, setAvailableFilter] = useState("");
-  const {
-    sortKey: availableSortKey,
-    sortDir: availableSortDir,
-    toggleSort: toggleAvailableSort,
-  } = useSort<"name" | "description">("name");
 
   const availableTopics = topics.filter((topic) => !items.some((item) => item.topic_id === topic.id));
   const filteredAvailableTopics = availableTopics.filter((topic) => {
@@ -116,9 +99,6 @@ export function TopicPeriodsPage() {
     if (!needle) return true;
     return topic.name.toLowerCase().includes(needle) || topic.description.toLowerCase().includes(needle);
   });
-  const sortedAvailableTopics = [...filteredAvailableTopics].sort((a, b) =>
-    compareSortValues(a[availableSortKey], b[availableSortKey], availableSortDir),
-  );
 
   const loadStatements = async (topicId: number) => {
     const stmts = await statementsApi.list({ topic_id: topicId });
@@ -126,12 +106,19 @@ export function TopicPeriodsPage() {
     return stmts;
   };
 
-  const loadPartyStatements = async (periodId: number, stmtIds: Set<number>) => {
-    const allPartyStatements = await partyStatementsApi.list({ period_id: periodId });
-    setPartyStatements(allPartyStatements.filter((ps) => stmtIds.has(ps.statement_id)));
-  };
+  const loadApprovals = async (topicId: number, periodId: number) => {
+    const stmts = await loadStatements(topicId);
+    const stmtIds = new Set(stmts.map((s) => s.id));
 
-  const loadPopStatements = async (periodId: number, stmtIds: Set<number>) => {
+    const allPartyStatements = await partyStatementsApi.list({ period_id: periodId });
+    const relevantPartyStatements = allPartyStatements.filter((ps) => stmtIds.has(ps.statement_id));
+    setPartyStatements(relevantPartyStatements);
+    const partyDrafts: Record<number, number | null> = {};
+    relevantPartyStatements.forEach((ps) => {
+      partyDrafts[ps.party_id] = ps.statement_id;
+    });
+    setPartyApprovalDrafts(partyDrafts);
+
     const allPopStatements = await popStatementsApi.list({ period_id: periodId });
     const drafts: Record<string, number> = {};
     const ids: Record<string, number> = {};
@@ -143,13 +130,8 @@ export function TopicPeriodsPage() {
         ids[key] = ps.id;
       });
     setPopApprovalDrafts(drafts);
+    setPopApprovalOriginal(drafts);
     setPopStatementIds(ids);
-  };
-
-  const loadApprovals = async (topicId: number, periodId: number) => {
-    const stmts = await loadStatements(topicId);
-    const stmtIds = new Set(stmts.map((s) => s.id));
-    await Promise.all([loadPartyStatements(periodId, stmtIds), loadPopStatements(periodId, stmtIds)]);
   };
 
   const startAdd = async (topic: Topic) => {
@@ -167,131 +149,131 @@ export function TopicPeriodsPage() {
     await loadApprovals(entry.topic_id, entry.period_id);
   };
 
+  // Party/pop approvals are edited as local drafts while the modal is open and are
+  // only written to the API together with the topic/importance, when the bottom
+  // Save button is clicked — one consistent submit-on-save model for the whole
+  // mask, matching every other modal in the app, instead of saving each approval
+  // edit immediately.
+  const persistApprovals = async (periodId: number) => {
+    await Promise.all(
+      partiesInPeriod.map(async (party) => {
+        const draftValue = partyApprovalDrafts[party.id] ?? null;
+        const existing = partyStatements.find((ps) => ps.party_id === party.id);
+        const existingValue = existing?.statement_id ?? null;
+        if (draftValue === existingValue) return;
+        if (existing) await partyStatementsApi.remove(existing.id);
+        if (draftValue !== null) {
+          await partyStatementsApi.create({
+            party_id: party.id,
+            statement_id: draftValue,
+            period_id: periodId,
+            approved: true,
+          });
+        }
+      }),
+    );
+
+    await Promise.all(
+      popsInPeriod.flatMap((pop) =>
+        statements.map(async (statement) => {
+          const key = approvalKey(pop.id, statement.id);
+          const draftValue = popApprovalDrafts[key] ?? 0;
+          const originalValue = popApprovalOriginal[key] ?? 0;
+          if (draftValue === originalValue) return;
+          const existingId = popStatementIds[key];
+          if (existingId) {
+            await popStatementsApi.update(existingId, { approval: draftValue });
+          } else if (draftValue > 0) {
+            await popStatementsApi.create({
+              pop_id: pop.id,
+              statement_id: statement.id,
+              period_id: periodId,
+              approval: draftValue,
+            });
+          }
+        }),
+      ),
+    );
+  };
+
   const handleSave = async () => {
     try {
+      const periodId = form.values.period_id;
       if (editing) {
         await update(editing.id, { importance: form.values.importance });
       } else {
         await create(form.values);
       }
+      await persistApprovals(periodId);
       close();
     } catch (error) {
       notifications.show({ color: "red", message: String(error) });
     }
   };
 
-  const handleDelete = async (entry: TopicPeriod) => {
-    if (!window.confirm(t.topicPeriods.confirmDelete)) return;
-    await remove(entry.id);
-  };
-
-  // --- Party approvals ---
-  const partyApproval = (partyId: number): number | null =>
-    partyStatements.find((ps) => ps.party_id === partyId)?.statement_id ?? null;
-
-  // Party/pop approvals only need a period + statement, not the TopicPeriod row itself,
-  // so they save immediately — even before the topic has been added via the bottom
-  // Save button — same as they already do while editing an existing entry.
-  const setPartyApproval = async (partyId: number, statementId: number | null) => {
-    const periodId = form.values.period_id;
-    if (!periodId) return;
-    const existing = partyStatements.find((ps) => ps.party_id === partyId);
-    if (existing && existing.statement_id === statementId) return;
-
-    if (existing) {
-      await partyStatementsApi.remove(existing.id);
-    }
-    if (statementId !== null) {
-      await partyStatementsApi.create({
-        party_id: partyId,
-        statement_id: statementId,
-        period_id: periodId,
-        approved: true,
-      });
-    }
-    await loadPartyStatements(periodId, new Set(statements.map((s) => s.id)));
-  };
-
-  // --- Pop approvals ---
-  const persistPopApproval = async (popId: number, statementId: number) => {
-    const periodId = form.values.period_id;
-    if (!periodId) return;
-    const key = approvalKey(popId, statementId);
-    const value = popApprovalDrafts[key] ?? 0;
-    const existingId = popStatementIds[key];
-    if (existingId) {
-      await popStatementsApi.update(existingId, { approval: value });
-    } else if (value > 0) {
-      await popStatementsApi.create({
-        pop_id: popId,
-        statement_id: statementId,
-        period_id: periodId,
-        approval: value,
-      });
-    }
-    await loadPopStatements(periodId, new Set(statements.map((s) => s.id)));
+  const handleDelete = (entry: TopicPeriod) => {
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.topicPeriods.confirmDelete,
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: () => remove(entry.id),
+    });
   };
 
   const popApprovalSum = (popId: number): number =>
     statements.reduce((sum, statement) => sum + (popApprovalDrafts[approvalKey(popId, statement.id)] ?? 0), 0);
 
+  const addedColumns: DataTableColumn<TopicPeriod, AddedSortKey>[] = [
+    { key: "topic", label: t.topicPeriods.columnTopic, render: (entry) => topicName(entry.topic_id) },
+    { key: "importance", label: t.topicPeriods.columnImportance, render: (entry) => entry.importance },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (entry) => (
+        <Button
+          variant="subtle"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(entry);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
+
+  const availableColumns: DataTableColumn<Topic, AvailableSortKey>[] = [
+    { key: "name", label: t.topicPeriods.columnTopic, render: (topic) => topic.name },
+    { key: "description", label: t.topicPeriods.columnDescription, render: (topic) => topic.description },
+  ];
+
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.topicPeriods.pageTitle}
-      </Text>
+      <PageHeader title={t.topicPeriods.pageTitle} />
 
       <PeriodSelector />
 
       {selectedPeriodId && (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <SortableTh
-                label={t.topicPeriods.columnTopic}
-                sortKey="topic"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <SortableTh
-                label={t.topicPeriods.columnImportance}
-                sortKey="importance"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {sortedItems.map((entry) => (
-              <Table.Tr key={entry.id} onClick={() => openEdit(entry)} style={{ cursor: "pointer" }}>
-                <Table.Td>{topicName(entry.topic_id)}</Table.Td>
-                <Table.Td>{entry.importance}</Table.Td>
-                <Table.Td>
-                  <Button
-                    variant="subtle"
-                    color="red"
-                    size="xs"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleDelete(entry);
-                    }}
-                  >
-                    {t.common.delete}
-                  </Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      )}
-
-      {selectedPeriodId && !loading && items.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.topicPeriods.empty}
-        </Text>
+        <DataTable
+          columns={addedColumns}
+          items={items}
+          getRowKey={(entry) => entry.id}
+          getSortValue={(entry, key) =>
+            key === "topic" ? topicName(entry.topic_id) : key === "importance" ? entry.importance : ""
+          }
+          initialSortKey="topic"
+          loading={loading}
+          error={error}
+          errorText={t.common.loadError}
+          emptyText={t.topicPeriods.empty}
+          onRowClick={openEdit}
+        />
       )}
 
       {selectedPeriodId && (
@@ -306,42 +288,17 @@ export function TopicPeriodsPage() {
             mb="sm"
           />
 
-          {sortedAvailableTopics.length === 0 ? (
-            <Text c="dimmed">{t.topicPeriods.noAvailableTopics}</Text>
-          ) : (
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <SortableTh
-                    label={t.topicPeriods.columnTopic}
-                    sortKey="name"
-                    activeKey={availableSortKey}
-                    direction={availableSortDir}
-                    onSort={toggleAvailableSort}
-                  />
-                  <SortableTh
-                    label={t.topicPeriods.columnDescription}
-                    sortKey="description"
-                    activeKey={availableSortKey}
-                    direction={availableSortDir}
-                    onSort={toggleAvailableSort}
-                  />
-                  <Table.Th />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {sortedAvailableTopics.map((topic) => (
-                  <Table.Tr key={topic.id} onClick={() => startAdd(topic)} style={{ cursor: "pointer" }}>
-                    <Table.Td>{topic.name}</Table.Td>
-                    <Table.Td>{topic.description}</Table.Td>
-                    <Table.Td>
-                      <IconPlus size={16} />
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          )}
+          <DataTable
+            columns={availableColumns}
+            items={filteredAvailableTopics}
+            getRowKey={(topic) => topic.id}
+            getSortValue={(topic, key) => (key === "name" ? topic.name : topic.description)}
+            initialSortKey="name"
+            emptyText={t.topicPeriods.noAvailableTopics}
+            onRowClick={startAdd}
+            rowActionLabel={t.common.add}
+            rowActionIcon={IconPlus}
+          />
         </>
       )}
 
@@ -409,13 +366,13 @@ export function TopicPeriodsPage() {
                             })),
                           ]}
                           value={
-                            partyApproval(party.id) !== null ? String(partyApproval(party.id)) : NONE_VALUE
+                            partyApprovalDrafts[party.id] != null ? String(partyApprovalDrafts[party.id]) : NONE_VALUE
                           }
                           onChange={(value) =>
-                            setPartyApproval(
-                              party.id,
-                              !value || value === NONE_VALUE ? null : Number(value),
-                            )
+                            setPartyApprovalDrafts((prev) => ({
+                              ...prev,
+                              [party.id]: !value || value === NONE_VALUE ? null : Number(value),
+                            }))
                           }
                         />
                       </Table.Td>
@@ -470,7 +427,6 @@ export function TopicPeriodsPage() {
                                     [key]: typeof value === "number" ? value : 0,
                                   }))
                                 }
-                                onBlur={() => persistPopApproval(pop.id, statement.id)}
                               />
                             </Table.Td>
                           );

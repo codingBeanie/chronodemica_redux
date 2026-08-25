@@ -1,4 +1,4 @@
-import { Button, Modal, NumberInput, Select, Table, Text, TextInput } from "@mantine/core";
+import { Button, Modal, NumberInput, Select, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,11 +6,11 @@ import { useState } from "react";
 
 import { periodsApi } from "../api/resources";
 import type { Period, PeriodInput } from "../api/types";
-import { AddRow } from "../components/AddRow";
-import { SortableTh } from "../components/SortableTh";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { VOTING_SYSTEMS, votingSystemLabel } from "../constants/votingSystems";
 import { usePeriodContext } from "../context/PeriodContext";
-import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PeriodInput = {
@@ -26,12 +26,6 @@ type SortKey = "voting_date" | "start_date" | "end_date" | "voting_system" | "se
 export function PeriodsPage() {
   const t = useTranslation();
   const { periods, loading, refresh } = usePeriodContext();
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("voting_date");
-  const getSortValue = (period: Period, key: SortKey): string | number =>
-    key === "voting_system" ? votingSystemLabel(period.voting_system) : period[key];
-  const sortedPeriods = [...periods].sort((a, b) =>
-    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
-  );
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Period | null>(null);
   const form = useForm<PeriodInput>({ initialValues: emptyValues });
@@ -68,95 +62,67 @@ export function PeriodsPage() {
     }
   };
 
-  const handleDelete = async (period: Period) => {
-    if (!window.confirm(t.periods.confirmDelete)) return;
-    await periodsApi.remove(period.id);
-    await refresh();
+  const handleDelete = (period: Period) => {
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.periods.confirmDelete,
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: async () => {
+        await periodsApi.remove(period.id);
+        await refresh();
+      },
+    });
   };
+
+  const columns: DataTableColumn<Period, SortKey | "actions">[] = [
+    { key: "voting_date", label: t.periods.columnVotingDate, render: (period) => period.voting_date },
+    { key: "start_date", label: t.periods.columnStartDate, render: (period) => period.start_date },
+    { key: "end_date", label: t.periods.columnEndDate, render: (period) => period.end_date },
+    {
+      key: "voting_system",
+      label: t.periods.columnVotingSystem,
+      render: (period) => votingSystemLabel(period.voting_system),
+    },
+    { key: "seats", label: t.periods.columnSeats, align: "right", render: (period) => period.seats },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (period) => (
+        <Button
+          variant="subtle"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(period);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.periods.pageTitle}
-      </Text>
-      <Button onClick={openCreate} mb="md">
-        {t.periods.newButton}
-      </Button>
+      <PageHeader title={t.periods.pageTitle} action={{ label: t.periods.newButton, onClick: openCreate }} />
 
-      <Table striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh
-              label={t.periods.columnVotingDate}
-              sortKey="voting_date"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.periods.columnStartDate}
-              sortKey="start_date"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.periods.columnEndDate}
-              sortKey="end_date"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.periods.columnVotingSystem}
-              sortKey="voting_system"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.periods.columnSeats}
-              sortKey="seats"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-              align="right"
-            />
-            <Table.Th />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sortedPeriods.map((period) => (
-            <Table.Tr key={period.id} onClick={() => openEdit(period)} style={{ cursor: "pointer" }}>
-              <Table.Td>{period.voting_date}</Table.Td>
-              <Table.Td>{period.start_date}</Table.Td>
-              <Table.Td>{period.end_date}</Table.Td>
-              <Table.Td>{votingSystemLabel(period.voting_system)}</Table.Td>
-              <Table.Td ta="right">{period.seats}</Table.Td>
-              <Table.Td>
-                <Button
-                  variant="subtle"
-                  color="red"
-                  size="xs"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleDelete(period);
-                  }}
-                >
-                  {t.common.delete}
-                </Button>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-          <AddRow colSpan={6} onClick={openCreate} label={t.periods.newButton} />
-        </Table.Tbody>
-      </Table>
-
-      {!loading && periods.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.periods.empty}
-        </Text>
-      )}
+      <DataTable
+        columns={columns}
+        items={periods}
+        getRowKey={(period) => period.id}
+        getSortValue={(period, key) =>
+          key === "voting_system" ? votingSystemLabel(period.voting_system) : key === "actions" ? "" : period[key]
+        }
+        initialSortKey="voting_date"
+        loading={loading}
+        emptyText={t.periods.empty}
+        onRowClick={openEdit}
+        addRow={{ label: t.periods.newButton, onClick: openCreate }}
+      />
 
       <Modal opened={opened} onClose={close} title={editing ? t.periods.modalEdit : t.periods.modalNew}>
         <form onSubmit={form.onSubmit(handleSubmit)}>

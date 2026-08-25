@@ -1,4 +1,4 @@
-import { Badge, Button, Divider, Modal, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Badge, Button, Divider, Modal, Stack, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,11 +6,11 @@ import { useRef, useState } from "react";
 
 import { worldApi, worldsApi } from "../api/resources";
 import type { World, WorldInput } from "../api/types";
-import { AddRow } from "../components/AddRow";
-import { SortableTh } from "../components/SortableTh";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { usePeriodContextOptional } from "../context/PeriodContext";
 import { useWorldContext } from "../context/WorldContext";
-import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: WorldInput = { name: "", parliament_name: "" };
@@ -19,10 +19,8 @@ type SortKey = "name" | "parliament_name";
 
 export function WorldsPage() {
   const t = useTranslation();
-  const { worlds, selectedWorldId, setSelectedWorldId, refresh } = useWorldContext();
+  const { worlds, loading, selectedWorldId, setSelectedWorldId, refresh } = useWorldContext();
   const periodCtx = usePeriodContextOptional();
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
-  const sortedWorlds = [...worlds].sort((a, b) => compareSortValues(a[sortKey], b[sortKey], sortDir));
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<World | null>(null);
   const [seeding, setSeeding] = useState(false);
@@ -61,14 +59,22 @@ export function WorldsPage() {
     }
   };
 
-  const handleDelete = async (world: World) => {
-    if (!window.confirm(t.worlds.confirmDelete(world.name))) return;
-    try {
-      await worldsApi.remove(world.id);
-      await refresh();
-    } catch (error) {
-      notifications.show({ color: "red", message: String(error) });
-    }
+  const handleDelete = (world: World) => {
+    confirmDialog({
+      tier: "critical",
+      title: t.worlds.pageTitle,
+      message: t.worlds.confirmDelete(world.name),
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: async () => {
+        try {
+          await worldsApi.remove(world.id);
+          await refresh();
+        } catch (error) {
+          notifications.show({ color: "red", message: String(error) });
+        }
+      },
+    });
   };
 
   // If the world these actions target is the currently active one, its already-loaded
@@ -78,32 +84,48 @@ export function WorldsPage() {
     if (worldId === selectedWorldId) await periodCtx?.refresh();
   };
 
-  const handleSeedDemoData = async (world: World) => {
-    if (!window.confirm(t.worlds.seedConfirm)) return;
-    setSeeding(true);
-    try {
-      await worldApi.seedDemoData(world.id);
-      notifications.show({ color: "green", message: t.worlds.seedSuccessMessage });
-      await refreshIfActive(world.id);
-    } catch (error) {
-      notifications.show({ color: "red", message: String(error) });
-    } finally {
-      setSeeding(false);
-    }
+  const handleSeedDemoData = (world: World) => {
+    confirmDialog({
+      tier: "neutral",
+      title: t.worlds.seedButton,
+      message: t.worlds.seedConfirm,
+      confirmLabel: t.worlds.seedButton,
+      cancelLabel: t.common.cancel,
+      onConfirm: async () => {
+        setSeeding(true);
+        try {
+          await worldApi.seedDemoData(world.id);
+          notifications.show({ color: "green", message: t.worlds.seedSuccessMessage });
+          await refreshIfActive(world.id);
+        } catch (error) {
+          notifications.show({ color: "red", message: String(error) });
+        } finally {
+          setSeeding(false);
+        }
+      },
+    });
   };
 
-  const handleDeleteAllData = async (world: World) => {
-    if (!window.confirm(t.worlds.deleteAllConfirm)) return;
-    setDeleting(true);
-    try {
-      await worldApi.deleteAllData(world.id);
-      notifications.show({ color: "green", message: t.worlds.deleteAllSuccessMessage });
-      await refreshIfActive(world.id);
-    } catch (error) {
-      notifications.show({ color: "red", message: String(error) });
-    } finally {
-      setDeleting(false);
-    }
+  const handleDeleteAllData = (world: World) => {
+    confirmDialog({
+      tier: "critical",
+      title: t.worlds.deleteAllButton,
+      message: t.worlds.deleteAllConfirm,
+      confirmLabel: t.worlds.deleteAllButton,
+      cancelLabel: t.common.cancel,
+      onConfirm: async () => {
+        setDeleting(true);
+        try {
+          await worldApi.deleteAllData(world.id);
+          notifications.show({ color: "green", message: t.worlds.deleteAllSuccessMessage });
+          await refreshIfActive(world.id);
+        } catch (error) {
+          notifications.show({ color: "red", message: String(error) });
+        } finally {
+          setDeleting(false);
+        }
+      },
+    });
   };
 
   const handleExport = async (world: World) => {
@@ -122,101 +144,95 @@ export function WorldsPage() {
     }
   };
 
-  const handleImportFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || !editing) return;
-    if (!window.confirm(t.worlds.importConfirm)) return;
-    setImporting(true);
-    try {
-      const updated = await worldApi.importWorld(editing.id, file);
-      setEditing(updated);
-      form.setValues({ name: updated.name, parliament_name: updated.parliament_name });
-      notifications.show({ color: "green", message: t.worlds.importSuccessMessage });
-      await refresh();
-      await refreshIfActive(updated.id);
-    } catch (error) {
-      notifications.show({ color: "red", message: String(error) });
-    } finally {
-      setImporting(false);
-    }
+    const target = editing;
+    confirmDialog({
+      tier: "critical",
+      title: t.worlds.importButton,
+      message: t.worlds.importConfirm,
+      confirmLabel: t.worlds.importButton,
+      cancelLabel: t.common.cancel,
+      onConfirm: async () => {
+        setImporting(true);
+        try {
+          const updated = await worldApi.importWorld(target.id, file);
+          setEditing(updated);
+          form.setValues({ name: updated.name, parliament_name: updated.parliament_name });
+          notifications.show({ color: "green", message: t.worlds.importSuccessMessage });
+          await refresh();
+          await refreshIfActive(updated.id);
+        } catch (error) {
+          notifications.show({ color: "red", message: String(error) });
+        } finally {
+          setImporting(false);
+        }
+      },
+    });
   };
+
+  const columns: DataTableColumn<World, SortKey | "status" | "actions">[] = [
+    { key: "name", label: t.worlds.columnName, render: (world) => world.name },
+    { key: "parliament_name", label: t.worlds.columnParliament, render: (world) => world.parliament_name },
+    {
+      key: "status",
+      label: null,
+      sortable: false,
+      render: (world) =>
+        world.id === selectedWorldId ? (
+          <Badge color="green">{t.worlds.activeLabel}</Badge>
+        ) : (
+          <Button
+            variant="subtle"
+            size="xs"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSelectedWorldId(world.id);
+            }}
+          >
+            {t.worlds.switchButton}
+          </Button>
+        ),
+    },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (world) => (
+        <Button
+          variant="filled"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(world);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.worlds.pageTitle}
-      </Text>
-      <Button onClick={openCreate} mb="md">
-        {t.worlds.newButton}
-      </Button>
+      <PageHeader title={t.worlds.pageTitle} action={{ label: t.worlds.newButton, onClick: openCreate }} />
 
-      <Table striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh
-              label={t.worlds.columnName}
-              sortKey="name"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.worlds.columnParliament}
-              sortKey="parliament_name"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <Table.Th />
-            <Table.Th />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sortedWorlds.map((world) => (
-            <Table.Tr key={world.id} onClick={() => openEdit(world)} style={{ cursor: "pointer" }}>
-              <Table.Td>{world.name}</Table.Td>
-              <Table.Td>{world.parliament_name}</Table.Td>
-              <Table.Td>
-                {world.id === selectedWorldId ? (
-                  <Badge color="green">{t.worlds.activeLabel}</Badge>
-                ) : (
-                  <Button
-                    variant="subtle"
-                    size="xs"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedWorldId(world.id);
-                    }}
-                  >
-                    {t.worlds.switchButton}
-                  </Button>
-                )}
-              </Table.Td>
-              <Table.Td>
-                <Button
-                  variant="subtle"
-                  color="red"
-                  size="xs"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleDelete(world);
-                  }}
-                >
-                  {t.common.delete}
-                </Button>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-          <AddRow colSpan={4} onClick={openCreate} label={t.worlds.newButton} />
-        </Table.Tbody>
-      </Table>
-
-      {worlds.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.worlds.empty}
-        </Text>
-      )}
+      <DataTable
+        columns={columns}
+        items={worlds}
+        getRowKey={(world) => world.id}
+        getSortValue={(world, key) =>
+          key === "name" ? world.name : key === "parliament_name" ? world.parliament_name : ""
+        }
+        initialSortKey="name"
+        loading={loading}
+        emptyText={t.worlds.empty}
+        onRowClick={openEdit}
+        addRow={{ label: t.worlds.newButton, onClick: openCreate }}
+      />
 
       <Modal opened={opened} onClose={close} title={editing ? t.worlds.modalEdit : t.worlds.modalNew}>
         <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -251,7 +267,7 @@ export function WorldsPage() {
                 {t.worlds.importButton}
               </Button>
               <Button
-                variant="outline"
+                variant="filled"
                 color="red"
                 fullWidth
                 onClick={() => handleDeleteAllData(editing)}

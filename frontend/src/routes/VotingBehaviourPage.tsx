@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { partiesApi, popsApi, statementsApi, topicsApi, votingBehaviourApi } from "../api/resources";
 import type { Party, Pop, Statement, Topic, VotingBehaviour, VotingBehaviourStatementRow } from "../api/types";
+import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
@@ -76,9 +77,7 @@ export function VotingBehaviourPage() {
 
   return (
     <>
-      <Text size="xl" fw={700} mb="md">
-        {t.votingBehaviour.pageTitle}
-      </Text>
+      <PageHeader title={t.votingBehaviour.pageTitle} />
 
       <Group align="flex-start" mb="md">
         <PeriodSelector />
@@ -108,7 +107,8 @@ export function VotingBehaviourPage() {
           {behaviour.statements.length === 0 ? (
             <Text c="dimmed">{t.votingBehaviour.empty}</Text>
           ) : (
-            <Table striped highlightOnHover>
+            <div style={{ overflowX: "auto" }}>
+            <Table>
               <Table.Thead>
                 <Table.Tr>
                   <SortableTh
@@ -169,6 +169,7 @@ export function VotingBehaviourPage() {
                 </Table.Tr>
               </Table.Tbody>
             </Table>
+            </div>
           )}
         </>
       )}

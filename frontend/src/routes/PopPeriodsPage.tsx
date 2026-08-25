@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, Select, Table, Text } from "@mantine/core";
+import { Button, Group, Modal, NumberInput, Select, Text } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,12 +6,12 @@ import { useEffect, useState } from "react";
 
 import { popPeriodsApi, popsApi } from "../api/resources";
 import type { Pop, PopPeriod, PopPeriodInput } from "../api/types";
-import { AddRow } from "../components/AddRow";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
-import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
-import { compareSortValues, useSort } from "../hooks/useSort";
 import { annualGrowthPercent, formatGrowthPercent, yearsBetween } from "../utils/growth";
 import { useTranslation } from "../i18n/I18nProvider";
 
@@ -22,11 +22,10 @@ type SortKey = "pop" | "population" | "turnout" | "eligibility";
 export function PopPeriodsPage() {
   const t = useTranslation();
   const { periods, selectedPeriodId } = usePeriodContext();
-  const { items, loading, create, update, remove, refresh } = useCrud(popPeriodsApi, {
+  const { items, loading, error, create, update, remove, refresh } = useCrud(popPeriodsApi, {
     period_id: selectedPeriodId ?? 0,
   });
   const [pops, setPops] = useState<Pop[]>([]);
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("pop");
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<PopPeriod | null>(null);
   const [previousItems, setPreviousItems] = useState<PopPeriod[]>([]);
@@ -54,12 +53,6 @@ export function PopPeriodsPage() {
   const popOptions = pops.map((p) => ({ value: String(p.id), label: p.name }));
   const previousPopulationFor = (popId: number) =>
     previousItems.find((p) => p.pop_id === popId)?.population ?? null;
-
-  const getSortValue = (entry: PopPeriod, key: SortKey): string | number =>
-    key === "pop" ? popName(entry.pop_id) : entry[key];
-  const sortedItems = [...items].sort((a, b) =>
-    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
-  );
 
   const years = previousPeriod && currentPeriod ? yearsBetween(previousPeriod.voting_date, currentPeriod.voting_date) : null;
 
@@ -118,9 +111,15 @@ export function PopPeriodsPage() {
     }
   };
 
-  const handleDelete = async (entry: PopPeriod) => {
-    if (!window.confirm(t.popPeriods.confirmDelete)) return;
-    await remove(entry.id);
+  const handleDelete = (entry: PopPeriod) => {
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.popPeriods.confirmDelete,
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: () => remove(entry.id),
+    });
   };
 
   const formPreviousPopulation = previousPopulationFor(form.values.pop_id);
@@ -129,11 +128,38 @@ export function PopPeriodsPage() {
       ? annualGrowthPercent(formPreviousPopulation, form.values.population, years)
       : null;
 
+  const columns: DataTableColumn<PopPeriod, SortKey | "actions">[] = [
+    { key: "pop", label: t.popPeriods.columnPop, render: (entry) => popName(entry.pop_id) },
+    {
+      key: "population",
+      label: t.popPeriods.columnPopulation,
+      render: (entry) => entry.population.toLocaleString(),
+    },
+    { key: "turnout", label: t.popPeriods.columnTurnout, render: (entry) => entry.turnout },
+    { key: "eligibility", label: t.popPeriods.columnEligibility, render: (entry) => entry.eligibility },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (entry) => (
+        <Button
+          variant="subtle"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(entry);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.popPeriods.pageTitle}
-      </Text>
+      <PageHeader title={t.popPeriods.pageTitle} />
 
       <PeriodSelector />
 
@@ -159,71 +185,19 @@ export function PopPeriodsPage() {
       )}
 
       {selectedPeriodId && (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <SortableTh
-                label={t.popPeriods.columnPop}
-                sortKey="pop"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <SortableTh
-                label={t.popPeriods.columnPopulation}
-                sortKey="population"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <SortableTh
-                label={t.popPeriods.columnTurnout}
-                sortKey="turnout"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <SortableTh
-                label={t.popPeriods.columnEligibility}
-                sortKey="eligibility"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {sortedItems.map((entry) => (
-              <Table.Tr key={entry.id} onClick={() => openEdit(entry)} style={{ cursor: "pointer" }}>
-                <Table.Td>{popName(entry.pop_id)}</Table.Td>
-                <Table.Td>{entry.population.toLocaleString()}</Table.Td>
-                <Table.Td>{entry.turnout}</Table.Td>
-                <Table.Td>{entry.eligibility}</Table.Td>
-                <Table.Td>
-                  <Button
-                    variant="subtle"
-                    color="red"
-                    size="xs"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleDelete(entry);
-                    }}
-                  >
-                    {t.common.delete}
-                  </Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            <AddRow colSpan={5} onClick={openCreate} disabled={pops.length === 0} label={t.popPeriods.newButton} />
-          </Table.Tbody>
-        </Table>
-      )}
-
-      {selectedPeriodId && !loading && items.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.popPeriods.empty}
-        </Text>
+        <DataTable
+          columns={columns}
+          items={items}
+          getRowKey={(entry) => entry.id}
+          getSortValue={(entry, key) => (key === "pop" ? popName(entry.pop_id) : key === "actions" ? "" : entry[key])}
+          initialSortKey="pop"
+          loading={loading}
+          error={error}
+          errorText={t.common.loadError}
+          emptyText={t.popPeriods.empty}
+          onRowClick={openEdit}
+          addRow={{ label: t.popPeriods.newButton, onClick: openCreate, disabled: pops.length === 0 }}
+        />
       )}
 
       <Modal

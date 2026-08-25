@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, Select, Table, Text } from "@mantine/core";
+import { Button, Group, Modal, NumberInput, Select } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,14 +6,14 @@ import { useEffect, useState } from "react";
 
 import { partiesApi, partyPeriodsApi } from "../api/resources";
 import type { Party, PartyPeriod, PartyPeriodInput } from "../api/types";
-import { AddRow } from "../components/AddRow";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
-import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
-import { compareSortValues, useSort } from "../hooks/useSort";
-import { isPartyActiveAt } from "../utils/partyDisplay";
 import { useTranslation } from "../i18n/I18nProvider";
+import { isPartyActiveAt } from "../utils/partyDisplay";
 
 const emptyValues: PartyPeriodInput = { party_id: 0, period_id: 0, popularity: 10 };
 
@@ -22,11 +22,10 @@ type SortKey = "party" | "popularity";
 export function PartyPeriodsPage() {
   const t = useTranslation();
   const { periods, selectedPeriodId } = usePeriodContext();
-  const { items, loading, create, update, remove, refresh } = useCrud(partyPeriodsApi, {
+  const { items, loading, error, create, update, remove, refresh } = useCrud(partyPeriodsApi, {
     period_id: selectedPeriodId ?? 0,
   });
   const [parties, setParties] = useState<Party[]>([]);
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("party");
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<PartyPeriod | null>(null);
   const [previousItems, setPreviousItems] = useState<PartyPeriod[]>([]);
@@ -77,12 +76,6 @@ export function PartyPeriodsPage() {
     await refresh();
   };
 
-  const getSortValue = (entry: PartyPeriod, key: SortKey): string | number =>
-    key === "party" ? partyName(entry.party_id) : entry.popularity;
-  const sortedItems = [...items].sort((a, b) =>
-    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
-  );
-
   const openCreate = () => {
     setEditing(null);
     form.setValues({ ...emptyValues, period_id: selectedPeriodId ?? 0 });
@@ -108,16 +101,43 @@ export function PartyPeriodsPage() {
     }
   };
 
-  const handleDelete = async (entry: PartyPeriod) => {
-    if (!window.confirm(t.partyPeriods.confirmDelete)) return;
-    await remove(entry.id);
+  const handleDelete = (entry: PartyPeriod) => {
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.partyPeriods.confirmDelete,
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: () => remove(entry.id),
+    });
   };
+
+  const columns: DataTableColumn<PartyPeriod, SortKey | "actions">[] = [
+    { key: "party", label: t.partyPeriods.columnParty, render: (entry) => partyName(entry.party_id) },
+    { key: "popularity", label: t.partyPeriods.columnPopularity, render: (entry) => entry.popularity },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (entry) => (
+        <Button
+          variant="subtle"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(entry);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.partyPeriods.pageTitle}
-      </Text>
+      <PageHeader title={t.partyPeriods.pageTitle} />
 
       <PeriodSelector />
 
@@ -131,60 +151,25 @@ export function PartyPeriodsPage() {
       </Group>
 
       {selectedPeriodId && (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <SortableTh
-                label={t.partyPeriods.columnParty}
-                sortKey="party"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <SortableTh
-                label={t.partyPeriods.columnPopularity}
-                sortKey="popularity"
-                activeKey={sortKey}
-                direction={sortDir}
-                onSort={toggleSort}
-              />
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {sortedItems.map((entry) => (
-              <Table.Tr key={entry.id} onClick={() => openEdit(entry)} style={{ cursor: "pointer" }}>
-                <Table.Td>{partyName(entry.party_id)}</Table.Td>
-                <Table.Td>{entry.popularity}</Table.Td>
-                <Table.Td>
-                  <Button
-                    variant="subtle"
-                    color="red"
-                    size="xs"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleDelete(entry);
-                    }}
-                  >
-                    {t.common.delete}
-                  </Button>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            <AddRow
-              colSpan={3}
-              onClick={openCreate}
-              disabled={selectableParties.length === 0}
-              label={t.partyPeriods.newButton}
-            />
-          </Table.Tbody>
-        </Table>
-      )}
-
-      {selectedPeriodId && !loading && items.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.partyPeriods.empty}
-        </Text>
+        <DataTable
+          columns={columns}
+          items={items}
+          getRowKey={(entry) => entry.id}
+          getSortValue={(entry, key) =>
+            key === "party" ? partyName(entry.party_id) : key === "popularity" ? entry.popularity : ""
+          }
+          initialSortKey="party"
+          loading={loading}
+          error={error}
+          errorText={t.common.loadError}
+          emptyText={t.partyPeriods.empty}
+          onRowClick={openEdit}
+          addRow={{
+            label: t.partyPeriods.newButton,
+            onClick: openCreate,
+            disabled: selectableParties.length === 0,
+          }}
+        />
       )}
 
       <Modal

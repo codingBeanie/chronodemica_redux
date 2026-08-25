@@ -15,6 +15,10 @@ export const en = {
     none: "— none —",
     inGovernment: "In government",
     clickToAdd: "Click to add",
+    loadError: "Failed to load data. Please try refreshing the page.",
+    sortAscending: "Sorted ascending — activate to sort descending",
+    sortDescending: "Sorted descending — activate to sort ascending",
+    sortNone: "Not sorted — activate to sort ascending",
   },
   nav: {
     worlds: "Worlds",
@@ -118,6 +122,8 @@ export const en = {
     fieldSeatOrientation: "Seat orientation (0 = left, 100 = right)",
     empty: "No parties yet.",
     confirmDelete: (name: string) => `Delete "${name}"?`,
+    lowContrastWarning: (ratio: number) =>
+      `Low contrast (${ratio.toFixed(1)}:1) between background and text — badges and seat dots may be hard to read.`,
   },
   pops: {
     pageTitle: "Population Groups",
@@ -241,7 +247,9 @@ export const en = {
     pageTitle: "Coalitions",
     subtitle: "Sorted by political proximity — parties that sit closer together are more likely to cooperate.",
     empty: "No parliament composition for this period yet. Run a simulation first.",
-    seatsLabel: (seats: number, threshold: number) => `${seats} of ${threshold} seats needed`,
+    headerStat: (totalSeats: number, majorityThreshold: number) =>
+      `Seats total: ${totalSeats}, absolute majority ${majorityThreshold}`,
+    thresholdMarkerLabel: (majorityThreshold: number) => `${majorityThreshold} seats`,
     activeLabel: "Currently active",
     activateButton: "Mark as active",
     confirmActivate: "Mark this coalition as the active government? This replaces the current government marking.",

@@ -1,4 +1,4 @@
-import { Badge, Button, Modal, Table, Text, TextInput } from "@mantine/core";
+import { Badge, Button, Modal, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,10 +6,10 @@ import { useState } from "react";
 
 import { popsApi } from "../api/resources";
 import type { Pop, PopInput } from "../api/types";
-import { AddRow } from "../components/AddRow";
-import { SortableTh } from "../components/SortableTh";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { useCrud } from "../hooks/useCrud";
-import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PopInput = {
@@ -21,9 +21,7 @@ type SortKey = "name";
 
 export function PopsPage() {
   const t = useTranslation();
-  const { items, loading, create, update, remove } = useCrud(popsApi);
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
-  const sortedItems = [...items].sort((a, b) => compareSortValues(a.name, b.name, sortDir));
+  const { items, loading, error, create, update, remove } = useCrud(popsApi);
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Pop | null>(null);
   const form = useForm<PopInput>({ initialValues: emptyValues });
@@ -56,66 +54,67 @@ export function PopsPage() {
     }
   };
 
-  const handleDelete = async (pop: Pop) => {
-    if (!window.confirm(t.pops.confirmDelete(pop.name))) return;
-    await remove(pop.id);
+  const handleDelete = (pop: Pop) => {
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.pops.confirmDelete(pop.name),
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: () => remove(pop.id),
+    });
   };
+
+  const columns: DataTableColumn<Pop, SortKey | "actions">[] = [
+    {
+      key: "name",
+      label: t.pops.columnGroup,
+      render: (pop) => (
+        <>
+          <Badge variant="light" mr="xs">
+            {pop.abbreviation}
+          </Badge>
+          {pop.name}
+        </>
+      ),
+    },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (pop) => (
+        <Button
+          variant="subtle"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(pop);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.pops.pageTitle}
-      </Text>
-      <Button onClick={openCreate} mb="md">
-        {t.pops.newButton}
-      </Button>
+      <PageHeader title={t.pops.pageTitle} action={{ label: t.pops.newButton, onClick: openCreate }} />
 
-      <Table striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh
-              label={t.pops.columnGroup}
-              sortKey="name"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <Table.Th />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sortedItems.map((pop) => (
-            <Table.Tr key={pop.id} onClick={() => openEdit(pop)} style={{ cursor: "pointer" }}>
-              <Table.Td>
-                <Badge variant="light" mr="xs">
-                  {pop.abbreviation}
-                </Badge>
-                {pop.name}
-              </Table.Td>
-              <Table.Td>
-                <Button
-                  variant="subtle"
-                  color="red"
-                  size="xs"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleDelete(pop);
-                  }}
-                >
-                  {t.common.delete}
-                </Button>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-          <AddRow colSpan={2} onClick={openCreate} label={t.pops.newButton} />
-        </Table.Tbody>
-      </Table>
-
-      {!loading && items.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.pops.empty}
-        </Text>
-      )}
+      <DataTable
+        columns={columns}
+        items={items}
+        getRowKey={(pop) => pop.id}
+        getSortValue={(pop, key) => (key === "name" ? pop.name : "")}
+        initialSortKey="name"
+        loading={loading}
+        error={error}
+        errorText={t.common.loadError}
+        emptyText={t.pops.empty}
+        onRowClick={openEdit}
+        addRow={{ label: t.pops.newButton, onClick: openCreate }}
+      />
 
       <Modal opened={opened} onClose={close} title={editing ? t.pops.modalEdit : t.pops.modalNew}>
         <form onSubmit={form.onSubmit(handleSubmit)}>

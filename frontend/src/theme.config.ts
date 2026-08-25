@@ -15,4 +15,23 @@ export const themeConfig = {
   red: "#A31D1D",
   // Accent/warning color.
   yellow: "#FEBA18",
+  // Explicit font stack (system fonts only, no webfont network dependency) and
+  // default corner radius — applied app-wide via createTheme() in theme.ts.
+  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  defaultRadius: "md",
+  // Diagrams (charts, the hemicycle) always render on a fixed neutral surface,
+  // independent of the app's light/dark theme — see DiagramSurface.tsx for why.
+  diagram: {
+    background: "#FFFFFF",
+    text: "#1A1A1A",
+    dimmed: "#495057",
+    gridColor: "rgba(173, 181, 189, 0.6)",
+    cursorFill: "rgba(173, 181, 189, 0.15)",
+    // Outline drawn around a seat dot for the party currently in government.
+    governmentOutline: "#000000",
+    // The connected party-name bar and the individual change-vs-previous-period
+    // boxes in VotingResultsChart.
+    nameBarBackground: "#DEE2E6",
+    changeBoxBackground: "#F1F3F5",
+  },
 };

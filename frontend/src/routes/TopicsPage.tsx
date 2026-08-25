@@ -1,4 +1,4 @@
-import { Button, Divider, Group, Modal, Stack, Table, Text, Textarea, TextInput } from "@mantine/core";
+import { Button, Divider, Group, Modal, Stack, Text, Textarea, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,10 +6,10 @@ import { useState } from "react";
 
 import { statementsApi, topicsApi } from "../api/resources";
 import type { Statement, Topic, TopicInput } from "../api/types";
-import { AddRow } from "../components/AddRow";
-import { SortableTh } from "../components/SortableTh";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { useCrud } from "../hooks/useCrud";
-import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: TopicInput = {
@@ -21,9 +21,7 @@ type SortKey = "name" | "description";
 
 export function TopicsPage() {
   const t = useTranslation();
-  const { items, loading, create, update, remove } = useCrud(topicsApi);
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
-  const sortedItems = [...items].sort((a, b) => compareSortValues(a[sortKey], b[sortKey], sortDir));
+  const { items, loading, error, create, update, remove } = useCrud(topicsApi);
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Topic | null>(null);
   const form = useForm<TopicInput>({ initialValues: emptyValues });
@@ -68,9 +66,15 @@ export function TopicsPage() {
     close();
   };
 
-  const handleDelete = async (topic: Topic) => {
-    if (!window.confirm(t.topics.confirmDelete(topic.name))) return;
-    await remove(topic.id);
+  const handleDelete = (topic: Topic) => {
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.topics.confirmDelete(topic.name),
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: () => remove(topic.id),
+    });
   };
 
   const handleAddStatement = async () => {
@@ -92,70 +96,62 @@ export function TopicsPage() {
     await refreshStatements(editing.id);
   };
 
-  const handleDeleteStatement = async (statement: Statement) => {
-    if (!editing || !window.confirm(t.topics.confirmDeleteStatement)) return;
-    await statementsApi.remove(statement.id);
-    await refreshStatements(editing.id);
+  const handleDeleteStatement = (statement: Statement) => {
+    if (!editing) return;
+    const topicId = editing.id;
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.topics.confirmDeleteStatement,
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: async () => {
+        await statementsApi.remove(statement.id);
+        await refreshStatements(topicId);
+      },
+    });
   };
+
+  const columns: DataTableColumn<Topic, SortKey | "actions">[] = [
+    { key: "name", label: t.topics.columnName, render: (topic) => topic.name },
+    { key: "description", label: t.topics.columnDescription, render: (topic) => topic.description },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (topic) => (
+        <Button
+          variant="subtle"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(topic);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.topics.pageTitle}
-      </Text>
-      <Button onClick={openCreate} mb="md">
-        {t.topics.newButton}
-      </Button>
+      <PageHeader title={t.topics.pageTitle} action={{ label: t.topics.newButton, onClick: openCreate }} />
 
-      <Table striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh
-              label={t.topics.columnName}
-              sortKey="name"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.topics.columnDescription}
-              sortKey="description"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <Table.Th />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sortedItems.map((topic) => (
-            <Table.Tr key={topic.id} onClick={() => openEdit(topic)} style={{ cursor: "pointer" }}>
-              <Table.Td>{topic.name}</Table.Td>
-              <Table.Td>{topic.description}</Table.Td>
-              <Table.Td>
-                <Button
-                  variant="subtle"
-                  color="red"
-                  size="xs"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleDelete(topic);
-                  }}
-                >
-                  {t.common.delete}
-                </Button>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-          <AddRow colSpan={3} onClick={openCreate} label={t.topics.newButton} />
-        </Table.Tbody>
-      </Table>
-
-      {!loading && items.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.topics.empty}
-        </Text>
-      )}
+      <DataTable
+        columns={columns}
+        items={items}
+        getRowKey={(topic) => topic.id}
+        getSortValue={(topic, key) => (key === "actions" ? "" : topic[key])}
+        initialSortKey="name"
+        loading={loading}
+        error={error}
+        errorText={t.common.loadError}
+        emptyText={t.topics.empty}
+        onRowClick={openEdit}
+        addRow={{ label: t.topics.newButton, onClick: openCreate }}
+      />
 
       <Modal opened={opened} onClose={close} title={editing ? t.topics.modalEdit : t.topics.modalNew} size="lg">
         <form onSubmit={form.onSubmit(handleSubmit)}>

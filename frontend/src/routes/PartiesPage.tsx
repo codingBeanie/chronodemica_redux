@@ -1,4 +1,4 @@
-import { Badge, Button, ColorInput, Modal, NumberInput, Slider, Table, Text, TextInput } from "@mantine/core";
+import { Badge, Button, ColorInput, Modal, NumberInput, Slider, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,17 +6,19 @@ import { useState } from "react";
 
 import { partiesApi } from "../api/resources";
 import type { Party, PartyInput } from "../api/types";
-import { AddRow } from "../components/AddRow";
-import { SortableTh } from "../components/SortableTh";
+import { confirmDialog } from "../components/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../components/DataTable";
+import { PageHeader } from "../components/PageHeader";
 import { useCrud } from "../hooks/useCrud";
-import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
+import { themeConfig } from "../theme.config";
+import { contrastRatio, MIN_AA_CONTRAST } from "../utils/colorContrast";
 
 const emptyValues: PartyInput = {
   abbreviation: "",
   name: "",
-  color_bg: "#228be6",
-  color_text: "#ffffff",
+  color_bg: themeConfig.brand,
+  color_text: themeConfig.surface,
   founded: null,
   dissolved: null,
   seat_orientation: 50,
@@ -26,13 +28,7 @@ type SortKey = "name" | "founded" | "dissolved" | "seat_orientation";
 
 export function PartiesPage() {
   const t = useTranslation();
-  const { items, loading, create, update, remove } = useCrud(partiesApi);
-  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
-  const getSortValue = (party: Party, key: SortKey): string | number =>
-    key === "founded" || key === "dissolved" ? (party[key] ?? -Infinity) : party[key];
-  const sortedItems = [...items].sort((a, b) =>
-    compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
-  );
+  const { items, loading, error, create, update, remove } = useCrud(partiesApi);
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<Party | null>(null);
   const form = useForm<PartyInput>({ initialValues: emptyValues });
@@ -70,90 +66,77 @@ export function PartiesPage() {
     }
   };
 
-  const handleDelete = async (party: Party) => {
-    if (!window.confirm(t.parties.confirmDelete(party.name))) return;
-    await remove(party.id);
+  const handleDelete = (party: Party) => {
+    confirmDialog({
+      tier: "routine",
+      title: t.common.delete,
+      message: t.parties.confirmDelete(party.name),
+      confirmLabel: t.common.delete,
+      cancelLabel: t.common.cancel,
+      onConfirm: () => remove(party.id),
+    });
   };
+
+  const colorRatio = contrastRatio(form.values.color_bg, form.values.color_text);
+  const lowContrast = colorRatio < MIN_AA_CONTRAST;
+
+  const columns: DataTableColumn<Party, SortKey | "actions">[] = [
+    {
+      key: "name",
+      label: t.parties.columnParty,
+      render: (party) => (
+        <>
+          <Badge color={party.color_bg} style={{ color: party.color_text }} mr="xs">
+            {party.abbreviation}
+          </Badge>
+          {party.name}
+        </>
+      ),
+    },
+    { key: "founded", label: t.parties.columnFounded, render: (party) => party.founded ?? "-" },
+    { key: "dissolved", label: t.parties.columnDissolved, render: (party) => party.dissolved ?? "-" },
+    {
+      key: "seat_orientation",
+      label: t.parties.columnSeatOrientation,
+      render: (party) => party.seat_orientation,
+    },
+    {
+      key: "actions",
+      label: null,
+      sortable: false,
+      render: (party) => (
+        <Button
+          variant="subtle"
+          color="red"
+          size="xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleDelete(party);
+          }}
+        >
+          {t.common.delete}
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <>
-      <Text size="xl" fw={700} mb="xs">
-        {t.parties.pageTitle}
-      </Text>
-      <Button onClick={openCreate} mb="md">
-        {t.parties.newButton}
-      </Button>
+      <PageHeader title={t.parties.pageTitle} action={{ label: t.parties.newButton, onClick: openCreate }} />
 
-      <Table striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <SortableTh
-              label={t.parties.columnParty}
-              sortKey="name"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.parties.columnFounded}
-              sortKey="founded"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.parties.columnDissolved}
-              sortKey="dissolved"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <SortableTh
-              label={t.parties.columnSeatOrientation}
-              sortKey="seat_orientation"
-              activeKey={sortKey}
-              direction={sortDir}
-              onSort={toggleSort}
-            />
-            <Table.Th />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {sortedItems.map((party) => (
-            <Table.Tr key={party.id} onClick={() => openEdit(party)} style={{ cursor: "pointer" }}>
-              <Table.Td>
-                <Badge color={party.color_bg} style={{ color: party.color_text }} mr="xs">
-                  {party.abbreviation}
-                </Badge>
-                {party.name}
-              </Table.Td>
-              <Table.Td>{party.founded ?? "-"}</Table.Td>
-              <Table.Td>{party.dissolved ?? "-"}</Table.Td>
-              <Table.Td>{party.seat_orientation}</Table.Td>
-              <Table.Td>
-                <Button
-                  variant="subtle"
-                  color="red"
-                  size="xs"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleDelete(party);
-                  }}
-                >
-                  {t.common.delete}
-                </Button>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-          <AddRow colSpan={5} onClick={openCreate} label={t.parties.newButton} />
-        </Table.Tbody>
-      </Table>
-
-      {!loading && items.length === 0 && (
-        <Text c="dimmed" mt="md">
-          {t.parties.empty}
-        </Text>
-      )}
+      <DataTable
+        columns={columns}
+        items={items}
+        getRowKey={(party) => party.id}
+        getSortValue={(party, key) => (key === "founded" || key === "dissolved" ? (party[key] ?? -Infinity) : key === "actions" ? "" : party[key])}
+        initialSortKey="name"
+        loading={loading}
+        error={error}
+        errorText={t.common.loadError}
+        emptyText={t.parties.empty}
+        onRowClick={openEdit}
+        addRow={{ label: t.parties.newButton, onClick: openCreate }}
+      />
 
       <Modal opened={opened} onClose={close} title={editing ? t.parties.modalEdit : t.parties.modalNew}>
         <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -161,6 +144,11 @@ export function PartiesPage() {
           <TextInput label={t.parties.fieldName} required mt="sm" {...form.getInputProps("name")} />
           <ColorInput label={t.parties.fieldColorBg} mt="sm" {...form.getInputProps("color_bg")} />
           <ColorInput label={t.parties.fieldColorText} mt="sm" {...form.getInputProps("color_text")} />
+          {lowContrast && (
+            <Text size="xs" c="orange" mt={4}>
+              {t.parties.lowContrastWarning(colorRatio)}
+            </Text>
+          )}
           <NumberInput label={t.parties.fieldFounded} mt="sm" {...form.getInputProps("founded")} />
           <NumberInput label={t.parties.fieldDissolved} mt="sm" {...form.getInputProps("dissolved")} />
           <Text size="sm" fw={500} mt="sm">

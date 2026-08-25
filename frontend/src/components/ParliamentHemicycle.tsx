@@ -1,5 +1,6 @@
 import { Group, Text } from "@mantine/core";
 
+import { themeConfig } from "../theme.config";
 import { layoutHemicycleSeats } from "../utils/hemicycleLayout";
 import { DiagramSurface } from "./DiagramSurface";
 
@@ -59,7 +60,7 @@ export function ParliamentHemicycle({ parties }: { parties: ParliamentHemicycleP
               cy={baselineY - dot.y}
               r={DOT_RADIUS}
               fill={dot.party.color}
-              stroke={dot.party.inGovernment ? "#000000" : "none"}
+              stroke={dot.party.inGovernment ? themeConfig.diagram.governmentOutline : "none"}
               strokeWidth={dot.party.inGovernment ? 1.5 : 0}
             >
               <title>{dot.party.name}</title>

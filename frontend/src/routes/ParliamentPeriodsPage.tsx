@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { parliamentPeriodsApi, partiesApi } from "../api/resources";
 import type { ParliamentPeriod, Party } from "../api/types";
 import { InGovernmentIcon } from "../components/InGovernmentIcon";
+import { PageHeader } from "../components/PageHeader";
 import { ParliamentHemicycle } from "../components/ParliamentHemicycle";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { SortableTh } from "../components/SortableTh";
@@ -49,9 +50,7 @@ export function ParliamentPeriodsPage() {
 
   return (
     <>
-      <Text size="xl" fw={700} mb="md">
-        {t.parliamentPeriods.pageTitle}
-      </Text>
+      <PageHeader title={t.parliamentPeriods.pageTitle} />
 
       <PeriodSelector />
 
@@ -69,7 +68,7 @@ export function ParliamentPeriodsPage() {
       )}
 
       {selectedPeriodId && (
-        <Table striped highlightOnHover mt="xl">
+        <Table mt="xl">
           <Table.Thead>
             <Table.Tr>
               <SortableTh

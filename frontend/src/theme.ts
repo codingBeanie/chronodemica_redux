@@ -1,4 +1,4 @@
-import { createTheme, type CSSVariablesResolver, type MantineColorsTuple } from "@mantine/core";
+import { createTheme, Modal, Paper, Card, Table, type CSSVariablesResolver, type MantineColorsTuple } from "@mantine/core";
 
 import { themeConfig } from "./theme.config";
 
@@ -124,11 +124,21 @@ export const theme = createTheme({
   primaryShade: { light: 6, dark: 4 },
   autoContrast: true,
   white: themeConfig.surface,
+  fontFamily: themeConfig.fontFamily,
+  defaultRadius: themeConfig.defaultRadius,
   colors: {
     brand,
     red,
     yellow,
     dark,
+  },
+  components: {
+    Table: Table.extend({ defaultProps: { striped: true, highlightOnHover: true } }),
+    Modal: Modal.extend({
+      defaultProps: { radius: "md", overlayProps: { backgroundOpacity: 0.55, blur: 3 } },
+    }),
+    Paper: Paper.extend({ defaultProps: { withBorder: true, radius: "md" } }),
+    Card: Card.extend({ defaultProps: { withBorder: true, radius: "md" } }),
   },
 });
 
