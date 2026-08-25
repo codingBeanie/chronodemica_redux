@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, Select, Table, Text, TextInput } from "@mantine/core";
+import { Button, Modal, NumberInput, Select, Table, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { periodsApi } from "../api/resources";
 import type { Period, PeriodInput } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { SortableTh } from "../components/SortableTh";
 import { VOTING_SYSTEMS, votingSystemLabel } from "../constants/votingSystems";
 import { usePeriodContext } from "../context/PeriodContext";
@@ -75,12 +76,12 @@ export function PeriodsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.periods.pageTitle}
-        </Text>
-        <Button onClick={openCreate}>{t.periods.newButton}</Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        {t.periods.pageTitle}
+      </Text>
+      <Button onClick={openCreate} mb="md">
+        {t.periods.newButton}
+      </Button>
 
       <Table striped highlightOnHover>
         <Table.Thead>
@@ -147,6 +148,7 @@ export function PeriodsPage() {
               </Table.Td>
             </Table.Tr>
           ))}
+          <AddRow colSpan={6} onClick={openCreate} label={t.periods.newButton} />
         </Table.Tbody>
       </Table>
 

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { statementsApi, topicsApi } from "../api/resources";
 import type { Statement, StatementInput, Topic } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { useCrud } from "../hooks/useCrud";
 
 const emptyValues: StatementInput = { topic_id: 0, text: "" };
@@ -56,14 +57,12 @@ export function StatementsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          Statements
-        </Text>
-        <Button onClick={openCreate} disabled={topics.length === 0}>
-          New Statement
-        </Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        Statements
+      </Text>
+      <Button onClick={openCreate} disabled={topics.length === 0} mb="md">
+        New Statement
+      </Button>
 
       {topics.length === 0 && (
         <Text c="dimmed" mb="md">
@@ -96,6 +95,7 @@ export function StatementsPage() {
               </Table.Td>
             </Table.Tr>
           ))}
+          <AddRow colSpan={3} onClick={openCreate} disabled={topics.length === 0} label="New Statement" />
         </Table.Tbody>
       </Table>
 

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { popPeriodsApi, popsApi } from "../api/resources";
 import type { Pop, PopPeriod, PopPeriodInput } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
@@ -21,7 +22,7 @@ type SortKey = "pop" | "population" | "turnout" | "eligibility";
 export function PopPeriodsPage() {
   const t = useTranslation();
   const { periods, selectedPeriodId } = usePeriodContext();
-  const { items, loading, create, update, remove } = useCrud(popPeriodsApi, {
+  const { items, loading, create, update, remove, refresh } = useCrud(popPeriodsApi, {
     period_id: selectedPeriodId ?? 0,
   });
   const [pops, setPops] = useState<Pop[]>([]);
@@ -65,6 +66,26 @@ export function PopPeriodsPage() {
   const currentTotal = items.reduce((sum, item) => sum + item.population, 0);
   const previousTotal = previousItems.reduce((sum, item) => sum + item.population, 0);
   const totalGrowthRate = years !== null ? annualGrowthPercent(previousTotal, currentTotal, years) : null;
+
+  const adoptablePops = previousItems.filter(
+    (prevItem) => !items.some((item) => item.pop_id === prevItem.pop_id),
+  );
+
+  const handleAdoptAll = async () => {
+    if (!selectedPeriodId || adoptablePops.length === 0) return;
+    await Promise.all(
+      adoptablePops.map((prevItem) =>
+        popPeriodsApi.create({
+          pop_id: prevItem.pop_id,
+          period_id: selectedPeriodId,
+          population: prevItem.population,
+          turnout: prevItem.turnout,
+          eligibility: prevItem.eligibility,
+        }),
+      ),
+    );
+    await refresh();
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -110,16 +131,20 @@ export function PopPeriodsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.popPeriods.pageTitle}
-        </Text>
+      <Text size="xl" fw={700} mb="xs">
+        {t.popPeriods.pageTitle}
+      </Text>
+
+      <PeriodSelector />
+
+      <Group gap="sm" mb="md">
         <Button onClick={openCreate} disabled={!selectedPeriodId || pops.length === 0}>
           {t.popPeriods.newButton}
         </Button>
+        <Button variant="default" onClick={handleAdoptAll} disabled={adoptablePops.length === 0}>
+          {t.popPeriods.adoptAllButton}
+        </Button>
       </Group>
-
-      <PeriodSelector />
 
       {selectedPeriodId && (
         <>
@@ -190,6 +215,7 @@ export function PopPeriodsPage() {
                 </Table.Td>
               </Table.Tr>
             ))}
+            <AddRow colSpan={5} onClick={openCreate} disabled={pops.length === 0} label={t.popPeriods.newButton} />
           </Table.Tbody>
         </Table>
       )}

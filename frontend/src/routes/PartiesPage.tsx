@@ -1,4 +1,4 @@
-import { Badge, Button, ColorInput, Group, Modal, NumberInput, Slider, Table, Text, TextInput } from "@mantine/core";
+import { Badge, Button, ColorInput, Modal, NumberInput, Slider, Table, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { partiesApi } from "../api/resources";
 import type { Party, PartyInput } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { SortableTh } from "../components/SortableTh";
 import { useCrud } from "../hooks/useCrud";
 import { compareSortValues, useSort } from "../hooks/useSort";
@@ -76,12 +77,12 @@ export function PartiesPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.parties.pageTitle}
-        </Text>
-        <Button onClick={openCreate}>{t.parties.newButton}</Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        {t.parties.pageTitle}
+      </Text>
+      <Button onClick={openCreate} mb="md">
+        {t.parties.newButton}
+      </Button>
 
       <Table striped highlightOnHover>
         <Table.Thead>
@@ -144,6 +145,7 @@ export function PartiesPage() {
               </Table.Td>
             </Table.Tr>
           ))}
+          <AddRow colSpan={5} onClick={openCreate} label={t.parties.newButton} />
         </Table.Tbody>
       </Table>
 

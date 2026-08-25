@@ -1,21 +1,24 @@
 import {
   Button,
   Divider,
-  Group,
   Modal,
   NumberInput,
   Select,
   Table,
   Text,
+  TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { IconPlus } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 
 import {
   partiesApi,
+  partyPeriodsApi,
   partyStatementsApi,
+  popPeriodsApi,
   popsApi,
   popStatementsApi,
   statementsApi,
@@ -24,8 +27,10 @@ import {
 } from "../api/resources";
 import type {
   Party,
+  PartyPeriod,
   PartyStatement,
   Pop,
+  PopPeriod,
   Statement,
   Topic,
   TopicPeriod,
@@ -64,6 +69,8 @@ export function TopicPeriodsPage() {
   const [partyStatements, setPartyStatements] = useState<PartyStatement[]>([]);
   const [popApprovalDrafts, setPopApprovalDrafts] = useState<Record<string, number>>({});
   const [popStatementIds, setPopStatementIds] = useState<Record<string, number>>({});
+  const [partyPeriods, setPartyPeriods] = useState<PartyPeriod[]>([]);
+  const [popPeriods, setPopPeriods] = useState<PopPeriod[]>([]);
 
   useEffect(() => {
     partiesApi.list().then(setParties);
@@ -71,16 +78,46 @@ export function TopicPeriodsPage() {
     topicsApi.list().then(setTopics);
   }, []);
 
+  // Only parties/pops already assigned to this period (via Party Period / Pop Period)
+  // can meaningfully approve statements here.
+  useEffect(() => {
+    if (!selectedPeriodId) {
+      setPartyPeriods([]);
+      setPopPeriods([]);
+      return;
+    }
+    partyPeriodsApi.list({ period_id: selectedPeriodId }).then(setPartyPeriods);
+    popPeriodsApi.list({ period_id: selectedPeriodId }).then(setPopPeriods);
+  }, [selectedPeriodId]);
+
+  const partiesInPeriod = parties.filter((party) => partyPeriods.some((pp) => pp.party_id === party.id));
+  const popsInPeriod = pops.filter((pop) => popPeriods.some((pp) => pp.pop_id === pop.id));
+
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "-";
-  const availableTopics = topics.filter(
-    (topic) => editing?.topic_id === topic.id || !items.some((item) => item.topic_id === topic.id),
-  );
 
   const { sortKey, sortDir, toggleSort } = useSort<SortKey>("topic");
   const getSortValue = (entry: TopicPeriod, key: SortKey): string | number =>
     key === "topic" ? topicName(entry.topic_id) : entry.importance;
   const sortedItems = [...items].sort((a, b) =>
     compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir),
+  );
+
+  // --- Available topics (not yet added to this period) ---
+  const [availableFilter, setAvailableFilter] = useState("");
+  const {
+    sortKey: availableSortKey,
+    sortDir: availableSortDir,
+    toggleSort: toggleAvailableSort,
+  } = useSort<"name" | "description">("name");
+
+  const availableTopics = topics.filter((topic) => !items.some((item) => item.topic_id === topic.id));
+  const filteredAvailableTopics = availableTopics.filter((topic) => {
+    const needle = availableFilter.trim().toLowerCase();
+    if (!needle) return true;
+    return topic.name.toLowerCase().includes(needle) || topic.description.toLowerCase().includes(needle);
+  });
+  const sortedAvailableTopics = [...filteredAvailableTopics].sort((a, b) =>
+    compareSortValues(a[availableSortKey], b[availableSortKey], availableSortDir),
   );
 
   const loadStatements = async (topicId: number) => {
@@ -115,38 +152,32 @@ export function TopicPeriodsPage() {
     await Promise.all([loadPartyStatements(periodId, stmtIds), loadPopStatements(periodId, stmtIds)]);
   };
 
-  const openCreate = () => {
+  const startAdd = async (topic: Topic) => {
+    if (!selectedPeriodId) return;
     setEditing(null);
-    setStatements([]);
-    setPartyStatements([]);
-    setPopApprovalDrafts({});
-    setPopStatementIds({});
-    form.setValues({ ...emptyValues, period_id: selectedPeriodId ?? 0 });
+    form.setValues({ topic_id: topic.id, period_id: selectedPeriodId, importance: 10 });
     open();
+    await loadApprovals(topic.id, selectedPeriodId);
   };
 
   const openEdit = async (entry: TopicPeriod) => {
     setEditing(entry);
     form.setValues({ topic_id: entry.topic_id, period_id: entry.period_id, importance: entry.importance });
-    await loadApprovals(entry.topic_id, entry.period_id);
     open();
+    await loadApprovals(entry.topic_id, entry.period_id);
   };
 
-  const handleSubmit = async (values: TopicPeriodInput) => {
+  const handleSave = async () => {
     try {
       if (editing) {
-        await update(editing.id, { importance: values.importance });
+        await update(editing.id, { importance: form.values.importance });
       } else {
-        const created = await create(values);
-        setEditing(created);
-        await loadApprovals(created.topic_id, created.period_id);
-        return;
+        await create(form.values);
       }
+      close();
     } catch (error) {
       notifications.show({ color: "red", message: String(error) });
-      return;
     }
-    close();
   };
 
   const handleDelete = async (entry: TopicPeriod) => {
@@ -154,25 +185,16 @@ export function TopicPeriodsPage() {
     await remove(entry.id);
   };
 
-  // Once a TopicPeriod exists, its importance auto-saves on blur — same as the
-  // party/pop approvals below it — rather than needing a separate Save button
-  // that would sit above content it doesn't cover.
-  const handleImportanceBlur = async () => {
-    if (!editing || form.values.importance === editing.importance) return;
-    try {
-      const updated = await update(editing.id, { importance: form.values.importance });
-      setEditing(updated);
-    } catch (error) {
-      notifications.show({ color: "red", message: String(error) });
-    }
-  };
-
   // --- Party approvals ---
   const partyApproval = (partyId: number): number | null =>
     partyStatements.find((ps) => ps.party_id === partyId)?.statement_id ?? null;
 
+  // Party/pop approvals only need a period + statement, not the TopicPeriod row itself,
+  // so they save immediately — even before the topic has been added via the bottom
+  // Save button — same as they already do while editing an existing entry.
   const setPartyApproval = async (partyId: number, statementId: number | null) => {
-    if (!editing) return;
+    const periodId = form.values.period_id;
+    if (!periodId) return;
     const existing = partyStatements.find((ps) => ps.party_id === partyId);
     if (existing && existing.statement_id === statementId) return;
 
@@ -183,19 +205,17 @@ export function TopicPeriodsPage() {
       await partyStatementsApi.create({
         party_id: partyId,
         statement_id: statementId,
-        period_id: editing.period_id,
+        period_id: periodId,
         approved: true,
       });
     }
-    await loadPartyStatements(
-      editing.period_id,
-      new Set(statements.map((s) => s.id)),
-    );
+    await loadPartyStatements(periodId, new Set(statements.map((s) => s.id)));
   };
 
   // --- Pop approvals ---
   const persistPopApproval = async (popId: number, statementId: number) => {
-    if (!editing) return;
+    const periodId = form.values.period_id;
+    if (!periodId) return;
     const key = approvalKey(popId, statementId);
     const value = popApprovalDrafts[key] ?? 0;
     const existingId = popStatementIds[key];
@@ -205,11 +225,11 @@ export function TopicPeriodsPage() {
       await popStatementsApi.create({
         pop_id: popId,
         statement_id: statementId,
-        period_id: editing.period_id,
+        period_id: periodId,
         approval: value,
       });
     }
-    await loadPopStatements(editing.period_id, new Set(statements.map((s) => s.id)));
+    await loadPopStatements(periodId, new Set(statements.map((s) => s.id)));
   };
 
   const popApprovalSum = (popId: number): number =>
@@ -217,14 +237,9 @@ export function TopicPeriodsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.topicPeriods.pageTitle}
-        </Text>
-        <Button onClick={openCreate} disabled={!selectedPeriodId || availableTopics.length === 0}>
-          {t.topicPeriods.newButton}
-        </Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        {t.topicPeriods.pageTitle}
+      </Text>
 
       <PeriodSelector />
 
@@ -279,65 +294,99 @@ export function TopicPeriodsPage() {
         </Text>
       )}
 
+      {selectedPeriodId && (
+        <>
+          <Divider my="lg" label={t.topicPeriods.availableTopicsTitle} labelPosition="left" />
+
+          <TextInput
+            placeholder={t.topicPeriods.filterPlaceholder}
+            value={availableFilter}
+            onChange={(event) => setAvailableFilter(event.currentTarget.value)}
+            maw={360}
+            mb="sm"
+          />
+
+          {sortedAvailableTopics.length === 0 ? (
+            <Text c="dimmed">{t.topicPeriods.noAvailableTopics}</Text>
+          ) : (
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <SortableTh
+                    label={t.topicPeriods.columnTopic}
+                    sortKey="name"
+                    activeKey={availableSortKey}
+                    direction={availableSortDir}
+                    onSort={toggleAvailableSort}
+                  />
+                  <SortableTh
+                    label={t.topicPeriods.columnDescription}
+                    sortKey="description"
+                    activeKey={availableSortKey}
+                    direction={availableSortDir}
+                    onSort={toggleAvailableSort}
+                  />
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {sortedAvailableTopics.map((topic) => (
+                  <Table.Tr key={topic.id} onClick={() => startAdd(topic)} style={{ cursor: "pointer" }}>
+                    <Table.Td>{topic.name}</Table.Td>
+                    <Table.Td>{topic.description}</Table.Td>
+                    <Table.Td>
+                      <IconPlus size={16} />
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          )}
+        </>
+      )}
+
       <Modal
         opened={opened}
         onClose={close}
         title={editing ? t.topicPeriods.modalEdit : t.topicPeriods.modalNew}
         size="95%"
       >
-        <Select
-          label={t.topicPeriods.fieldTopic}
+        <Text size="sm" c="dimmed">
+          {t.topicPeriods.fieldTopic}
+        </Text>
+        <Text fw={600} mb="sm">
+          {topicName(form.values.topic_id)}
+        </Text>
+
+        <NumberInput
+          label={t.topicPeriods.fieldImportance}
           required
-          disabled={!!editing}
-          data={availableTopics.map((topic) => ({ value: String(topic.id), label: topic.name }))}
-          value={form.values.topic_id ? String(form.values.topic_id) : null}
-          onChange={(value) => form.setFieldValue("topic_id", value ? Number(value) : 0)}
+          min={1}
+          max={20}
+          mt="sm"
+          value={form.values.importance}
+          onChange={(value) => form.setFieldValue("importance", typeof value === "number" ? value : 0)}
         />
 
-        {editing ? (
-          // The topic period already exists, so importance auto-saves on blur —
-          // consistent with the party/pop approvals below, no Save button needed.
-          <NumberInput
-            label={t.topicPeriods.fieldImportance}
-            required
-            min={1}
-            max={20}
-            mt="sm"
-            value={form.values.importance}
-            onChange={(value) =>
-              form.setFieldValue("importance", typeof value === "number" ? value : 0)
-            }
-            onBlur={handleImportanceBlur}
-          />
-        ) : (
-          <form onSubmit={form.onSubmit(handleSubmit)}>
-            <NumberInput
-              label={t.topicPeriods.fieldImportance}
-              required
-              min={1}
-              max={20}
-              mt="sm"
-              {...form.getInputProps("importance")}
-            />
-            <Button type="submit" mt="md">
-              {t.common.save}
-            </Button>
-          </form>
-        )}
-
-        {editing && statements.length === 0 && (
+        {statements.length === 0 && (
           <Text c="dimmed" size="sm" mt="md">
             {t.topicPeriods.noStatementsYet}
           </Text>
         )}
 
-        {editing && statements.length > 0 && (
+        {statements.length > 0 && (
           <>
             <Divider my="md" />
             <Text fw={600}>{t.topicPeriods.partyApprovalsTitle}</Text>
             <Text c="dimmed" size="sm" mb="sm">
               {t.topicPeriods.partyApprovalsHint}
             </Text>
+            {partiesInPeriod.length === 0 && (
+              <Text c="dimmed" size="sm" mb="sm">
+                {t.topicPeriods.noPartiesInPeriod}
+              </Text>
+            )}
+            {partiesInPeriod.length > 0 && (
             <div style={{ overflowX: "auto" }}>
               <Table>
                 <Table.Thead>
@@ -347,7 +396,7 @@ export function TopicPeriodsPage() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {parties.map((party) => (
+                  {partiesInPeriod.map((party) => (
                     <Table.Tr key={party.id}>
                       <Table.Td>{party.name}</Table.Td>
                       <Table.Td>
@@ -375,12 +424,19 @@ export function TopicPeriodsPage() {
                 </Table.Tbody>
               </Table>
             </div>
+            )}
 
             <Divider my="md" />
             <Text fw={600}>{t.topicPeriods.popApprovalsTitle}</Text>
             <Text c="dimmed" size="sm" mb="sm">
               {t.topicPeriods.popApprovalsHint}
             </Text>
+            {popsInPeriod.length === 0 && (
+              <Text c="dimmed" size="sm" mb="sm">
+                {t.topicPeriods.noPopsInPeriod}
+              </Text>
+            )}
+            {popsInPeriod.length > 0 && (
             <div style={{ overflowX: "auto" }}>
               <Table>
                 <Table.Thead>
@@ -393,7 +449,7 @@ export function TopicPeriodsPage() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {pops.map((pop) => {
+                  {popsInPeriod.map((pop) => {
                     const sum = popApprovalSum(pop.id);
                     return (
                       <Table.Tr key={pop.id}>
@@ -428,8 +484,13 @@ export function TopicPeriodsPage() {
                 </Table.Tbody>
               </Table>
             </div>
+            )}
           </>
         )}
+
+        <Button size="md" fullWidth mt="xl" onClick={handleSave}>
+          {t.common.save}
+        </Button>
       </Modal>
     </>
   );

@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 
 import { partiesApi, partyPeriodsApi } from "../api/resources";
 import type { Party, PartyPeriod, PartyPeriodInput } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
 import { compareSortValues, useSort } from "../hooks/useSort";
+import { isPartyActiveAt } from "../utils/partyDisplay";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PartyPeriodInput = { party_id: 0, period_id: 0, popularity: 10 };
@@ -19,22 +21,61 @@ type SortKey = "party" | "popularity";
 
 export function PartyPeriodsPage() {
   const t = useTranslation();
-  const { selectedPeriodId } = usePeriodContext();
-  const { items, loading, create, update, remove } = useCrud(partyPeriodsApi, {
+  const { periods, selectedPeriodId } = usePeriodContext();
+  const { items, loading, create, update, remove, refresh } = useCrud(partyPeriodsApi, {
     period_id: selectedPeriodId ?? 0,
   });
   const [parties, setParties] = useState<Party[]>([]);
   const { sortKey, sortDir, toggleSort } = useSort<SortKey>("party");
   const [opened, { open, close }] = useDisclosure(false);
   const [editing, setEditing] = useState<PartyPeriod | null>(null);
+  const [previousItems, setPreviousItems] = useState<PartyPeriod[]>([]);
   const form = useForm<PartyPeriodInput>({ initialValues: emptyValues });
 
   useEffect(() => {
     partiesApi.list().then(setParties);
   }, []);
 
+  const currentPeriod = periods.find((p) => p.id === selectedPeriodId) ?? null;
+  const sortedPeriods = [...periods].sort((a, b) => a.voting_date.localeCompare(b.voting_date));
+  const currentIndex = sortedPeriods.findIndex((p) => p.id === selectedPeriodId);
+  const previousPeriod = currentIndex > 0 ? sortedPeriods[currentIndex - 1] : null;
+
+  useEffect(() => {
+    if (previousPeriod) {
+      partyPeriodsApi.list({ period_id: previousPeriod.id }).then(setPreviousItems);
+    } else {
+      setPreviousItems([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previousPeriod?.id]);
+
   const partyName = (id: number) => parties.find((p) => p.id === id)?.name ?? "-";
-  const partyOptions = parties.map((p) => ({ value: String(p.id), label: p.name }));
+  // Parties that hadn't been founded yet, or were already dissolved, at this period's
+  // voting date are excluded — except one already assigned to the entry being edited.
+  const selectableParties = parties.filter(
+    (p) => p.id === editing?.party_id || !currentPeriod || isPartyActiveAt(p, currentPeriod.voting_date),
+  );
+  const partyOptions = selectableParties.map((p) => ({ value: String(p.id), label: p.name }));
+  const adoptableParties = currentPeriod
+    ? parties.filter(
+        (p) => isPartyActiveAt(p, currentPeriod.voting_date) && !items.some((item) => item.party_id === p.id),
+      )
+    : [];
+
+  const handleAdoptAll = async () => {
+    if (!currentPeriod || adoptableParties.length === 0) return;
+    await Promise.all(
+      adoptableParties.map((party) =>
+        partyPeriodsApi.create({
+          party_id: party.id,
+          period_id: currentPeriod.id,
+          popularity: previousItems.find((pi) => pi.party_id === party.id)?.popularity ?? emptyValues.popularity,
+        }),
+      ),
+    );
+    await refresh();
+  };
 
   const getSortValue = (entry: PartyPeriod, key: SortKey): string | number =>
     key === "party" ? partyName(entry.party_id) : entry.popularity;
@@ -74,16 +115,20 @@ export function PartyPeriodsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.partyPeriods.pageTitle}
-        </Text>
-        <Button onClick={openCreate} disabled={!selectedPeriodId || parties.length === 0}>
-          {t.partyPeriods.newButton}
-        </Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        {t.partyPeriods.pageTitle}
+      </Text>
 
       <PeriodSelector />
+
+      <Group gap="sm" mb="md">
+        <Button onClick={openCreate} disabled={!selectedPeriodId || selectableParties.length === 0}>
+          {t.partyPeriods.newButton}
+        </Button>
+        <Button variant="default" onClick={handleAdoptAll} disabled={adoptableParties.length === 0}>
+          {t.partyPeriods.adoptAllButton}
+        </Button>
+      </Group>
 
       {selectedPeriodId && (
         <Table striped highlightOnHover>
@@ -126,6 +171,12 @@ export function PartyPeriodsPage() {
                 </Table.Td>
               </Table.Tr>
             ))}
+            <AddRow
+              colSpan={3}
+              onClick={openCreate}
+              disabled={selectableParties.length === 0}
+              label={t.partyPeriods.newButton}
+            />
           </Table.Tbody>
         </Table>
       )}

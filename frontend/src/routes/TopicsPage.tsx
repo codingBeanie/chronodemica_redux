@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { statementsApi, topicsApi } from "../api/resources";
 import type { Statement, Topic, TopicInput } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { SortableTh } from "../components/SortableTh";
 import { useCrud } from "../hooks/useCrud";
 import { compareSortValues, useSort } from "../hooks/useSort";
@@ -99,12 +100,12 @@ export function TopicsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.topics.pageTitle}
-        </Text>
-        <Button onClick={openCreate}>{t.topics.newButton}</Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        {t.topics.pageTitle}
+      </Text>
+      <Button onClick={openCreate} mb="md">
+        {t.topics.newButton}
+      </Button>
 
       <Table striped highlightOnHover>
         <Table.Thead>
@@ -146,6 +147,7 @@ export function TopicsPage() {
               </Table.Td>
             </Table.Tr>
           ))}
+          <AddRow colSpan={3} onClick={openCreate} label={t.topics.newButton} />
         </Table.Tbody>
       </Table>
 

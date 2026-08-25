@@ -1,4 +1,4 @@
-import { Badge, Button, Divider, Group, Modal, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Badge, Button, Divider, Modal, Stack, Table, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 
 import { worldApi, worldsApi } from "../api/resources";
 import type { World, WorldInput } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { SortableTh } from "../components/SortableTh";
 import { usePeriodContextOptional } from "../context/PeriodContext";
 import { useWorldContext } from "../context/WorldContext";
@@ -143,12 +144,12 @@ export function WorldsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.worlds.pageTitle}
-        </Text>
-        <Button onClick={openCreate}>{t.worlds.newButton}</Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        {t.worlds.pageTitle}
+      </Text>
+      <Button onClick={openCreate} mb="md">
+        {t.worlds.newButton}
+      </Button>
 
       <Table striped highlightOnHover>
         <Table.Thead>
@@ -207,6 +208,7 @@ export function WorldsPage() {
               </Table.Td>
             </Table.Tr>
           ))}
+          <AddRow colSpan={4} onClick={openCreate} label={t.worlds.newButton} />
         </Table.Tbody>
       </Table>
 

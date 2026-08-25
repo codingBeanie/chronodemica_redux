@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Modal, Table, Text, TextInput } from "@mantine/core";
+import { Badge, Button, Modal, Table, Text, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { popsApi } from "../api/resources";
 import type { Pop, PopInput } from "../api/types";
+import { AddRow } from "../components/AddRow";
 import { SortableTh } from "../components/SortableTh";
 import { useCrud } from "../hooks/useCrud";
 import { compareSortValues, useSort } from "../hooks/useSort";
@@ -62,12 +63,12 @@ export function PopsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="md">
-        <Text size="xl" fw={700}>
-          {t.pops.pageTitle}
-        </Text>
-        <Button onClick={openCreate}>{t.pops.newButton}</Button>
-      </Group>
+      <Text size="xl" fw={700} mb="xs">
+        {t.pops.pageTitle}
+      </Text>
+      <Button onClick={openCreate} mb="md">
+        {t.pops.newButton}
+      </Button>
 
       <Table striped highlightOnHover>
         <Table.Thead>
@@ -106,6 +107,7 @@ export function PopsPage() {
               </Table.Td>
             </Table.Tr>
           ))}
+          <AddRow colSpan={2} onClick={openCreate} label={t.pops.newButton} />
         </Table.Tbody>
       </Table>
 

@@ -19,3 +19,11 @@ export function partyDisplayAbbreviation(partyId: number | null, parties: Party[
   if (partyId === null) return "Misc";
   return parties.find((p) => p.id === partyId)?.abbreviation ?? "-";
 }
+
+/** Whether `party` already existed and hadn't yet dissolved as of `votingDate`. */
+export function isPartyActiveAt(party: Party, votingDate: string): boolean {
+  const year = new Date(votingDate).getFullYear();
+  if (party.founded !== null && year < party.founded) return false;
+  if (party.dissolved !== null && year > party.dissolved) return false;
+  return true;
+}

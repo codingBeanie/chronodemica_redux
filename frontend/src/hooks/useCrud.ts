@@ -55,5 +55,5 @@ export function useCrud<T extends { id: number }, TInput>(
     await refresh();
   };
 
-  return { items, loading, error, create, update, remove };
+  return { items, loading, error, create, update, remove, refresh };
 }

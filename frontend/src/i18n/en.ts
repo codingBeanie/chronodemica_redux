@@ -14,6 +14,7 @@ export const en = {
     no: "No",
     none: "— none —",
     inGovernment: "In government",
+    clickToAdd: "Click to add",
   },
   nav: {
     worlds: "Worlds",
@@ -151,6 +152,7 @@ export const en = {
   partyPeriods: {
     pageTitle: "Party Period",
     newButton: "New Entry",
+    adoptAllButton: "Adopt All Eligible Parties",
     columnParty: "Party",
     columnPopularity: "Popularity",
     modalNew: "New Popularity Entry",
@@ -163,6 +165,7 @@ export const en = {
   popPeriods: {
     pageTitle: "Pop Period",
     newButton: "New Entry",
+    adoptAllButton: "Adopt All From Previous Period",
     columnPop: "Population Group",
     columnPopulation: "Population",
     columnTurnout: "Turnout",
@@ -183,7 +186,6 @@ export const en = {
   },
   topicPeriods: {
     pageTitle: "Topic Period",
-    newButton: "New Entry",
     columnTopic: "Topic",
     columnImportance: "Importance",
     modalNew: "New Topic Relevance Entry",
@@ -192,6 +194,10 @@ export const en = {
     fieldImportance: "Importance (1-20)",
     empty: "No topics selected for this period yet.",
     confirmDelete: "Remove this topic from the period? This also removes its party/pop approvals for this period.",
+    availableTopicsTitle: "Available Topics",
+    columnDescription: "Description",
+    filterPlaceholder: "Filter by name…",
+    noAvailableTopics: "All topics have already been added to this period.",
     partyApprovalsTitle: "Party Approvals",
     partyApprovalsHint: "Which statement (if any) does each party approve for this topic?",
     popApprovalsTitle: "Pop Approval Distribution",
@@ -201,6 +207,8 @@ export const en = {
     columnPop: "Population Group",
     sumLabel: "Sum",
     noStatementsYet: "This topic has no statements yet — add some under Master Data → Topics.",
+    noPartiesInPeriod: "No parties are assigned to this period yet — add some under Party Period first.",
+    noPopsInPeriod: "No population groups are assigned to this period yet — add some under Pop Period first.",
   },
   simulation: {
     pageTitle: "Simulation",
