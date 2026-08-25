@@ -63,6 +63,7 @@ export function ParliamentPeriodsPage() {
             color: partyColor(entry.party_id),
             seats: entry.seats,
             seatOrientation: partySeatOrientation(entry.party_id),
+            inGovernment: entry.in_government,
           }))}
         />
       )}

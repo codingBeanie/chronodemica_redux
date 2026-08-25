@@ -14,3 +14,8 @@ export function partyDisplayColor(partyId: number | null, parties: Party[]): str
   if (partyId === null) return MISC_COLOR;
   return parties.find((p) => p.id === partyId)?.color_bg ?? MISC_COLOR;
 }
+
+export function partyDisplayAbbreviation(partyId: number | null, parties: Party[]): string {
+  if (partyId === null) return "Misc";
+  return parties.find((p) => p.id === partyId)?.abbreviation ?? "-";
+}

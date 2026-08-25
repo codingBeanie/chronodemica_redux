@@ -71,7 +71,7 @@ export function CoalitionsPage() {
             {result?.coalitions.map((coalition) => {
               const isActive = isSameCoalition(coalition.party_ids, activePartyIds);
               return (
-                <Card key={coalition.party_ids.join("-")} withBorder padding="md">
+                <Card key={coalition.party_ids.join("-")} withBorder padding="md" bg="var(--surface-card-bg)">
                   <Group justify="space-between" align="center">
                     <Group gap="xs">
                       {[...coalition.party_ids]

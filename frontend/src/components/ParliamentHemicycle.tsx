@@ -9,6 +9,7 @@ interface ParliamentHemicycleParty {
   color: string;
   seats: number;
   seatOrientation: number;
+  inGovernment: boolean;
 }
 
 const RADIUS = 220;
@@ -58,6 +59,8 @@ export function ParliamentHemicycle({ parties }: { parties: ParliamentHemicycleP
               cy={baselineY - dot.y}
               r={DOT_RADIUS}
               fill={dot.party.color}
+              stroke={dot.party.inGovernment ? "#000000" : "none"}
+              strokeWidth={dot.party.inGovernment ? 1.5 : 0}
             >
               <title>{dot.party.name}</title>
             </circle>

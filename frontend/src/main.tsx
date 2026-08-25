@@ -11,11 +11,11 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 import { I18nProvider } from "./i18n/I18nProvider";
-import { theme } from "./theme";
+import { cssVariablesResolver, theme } from "./theme";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="auto">
+    <MantineProvider theme={theme} defaultColorScheme="auto" cssVariablesResolver={cssVariablesResolver}>
       <Notifications />
       <I18nProvider locale="en">
         <AuthProvider>

@@ -3,8 +3,12 @@
 // a matching dark-mode surface palette from these four base colors.
 
 export const themeConfig = {
-  // Page/card/modal background in light mode (Mantine's "white").
+  // Page canvas background in light mode (AppShell, Paper, modals by Mantine's default).
   background: "#EBEBEB",
+  // Elevated/interactive surfaces in light mode — inputs, dropdowns, and anything
+  // manually set to stand out against the page canvas (Mantine's "white"). Kept
+  // distinct from `background` so these don't visually disappear into the page.
+  surface: "#FFFFFF",
   // Primary action color: buttons, active nav, links, focus rings.
   brand: "#4F2000",
   // Danger/destructive color: delete buttons, required-field marks, form errors.

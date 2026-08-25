@@ -12,6 +12,14 @@ const SURFACE_VARS = {
   "--mantine-color-body": "#FFFFFF",
   "--mantine-color-text": "#1A1A1A",
   "--mantine-color-dimmed": "#495057",
+  // The chart tooltip's label/value text reads --mantine-color-bright, not
+  // --mantine-color-text — left unpinned, it resolved to near-white in dark
+  // mode (illegible against the tooltip's own forced-white background).
+  "--mantine-color-bright": "#1A1A1A",
+  // Scoped to diagrams only: bumps the tooltip's font size along with anything
+  // else in here sized via these tokens (e.g. the hemicycle legend).
+  "--mantine-font-size-sm": "0.9375rem",
+  "--mantine-font-size-md": "1.0625rem",
   "--chart-text-color": "#1A1A1A",
   "--chart-grid-color": "rgba(173, 181, 189, 0.6)",
   "--chart-cursor-fill": "rgba(173, 181, 189, 0.15)",

@@ -154,6 +154,19 @@ export function TopicPeriodsPage() {
     await remove(entry.id);
   };
 
+  // Once a TopicPeriod exists, its importance auto-saves on blur — same as the
+  // party/pop approvals below it — rather than needing a separate Save button
+  // that would sit above content it doesn't cover.
+  const handleImportanceBlur = async () => {
+    if (!editing || form.values.importance === editing.importance) return;
+    try {
+      const updated = await update(editing.id, { importance: form.values.importance });
+      setEditing(updated);
+    } catch (error) {
+      notifications.show({ color: "red", message: String(error) });
+    }
+  };
+
   // --- Party approvals ---
   const partyApproval = (partyId: number): number | null =>
     partyStatements.find((ps) => ps.party_id === partyId)?.statement_id ?? null;
@@ -272,27 +285,45 @@ export function TopicPeriodsPage() {
         title={editing ? t.topicPeriods.modalEdit : t.topicPeriods.modalNew}
         size="95%"
       >
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Select
-            label={t.topicPeriods.fieldTopic}
-            required
-            disabled={!!editing}
-            data={availableTopics.map((topic) => ({ value: String(topic.id), label: topic.name }))}
-            value={form.values.topic_id ? String(form.values.topic_id) : null}
-            onChange={(value) => form.setFieldValue("topic_id", value ? Number(value) : 0)}
-          />
+        <Select
+          label={t.topicPeriods.fieldTopic}
+          required
+          disabled={!!editing}
+          data={availableTopics.map((topic) => ({ value: String(topic.id), label: topic.name }))}
+          value={form.values.topic_id ? String(form.values.topic_id) : null}
+          onChange={(value) => form.setFieldValue("topic_id", value ? Number(value) : 0)}
+        />
+
+        {editing ? (
+          // The topic period already exists, so importance auto-saves on blur —
+          // consistent with the party/pop approvals below, no Save button needed.
           <NumberInput
             label={t.topicPeriods.fieldImportance}
             required
             min={1}
             max={20}
             mt="sm"
-            {...form.getInputProps("importance")}
+            value={form.values.importance}
+            onChange={(value) =>
+              form.setFieldValue("importance", typeof value === "number" ? value : 0)
+            }
+            onBlur={handleImportanceBlur}
           />
-          <Button type="submit" mt="md">
-            {t.common.save}
-          </Button>
-        </form>
+        ) : (
+          <form onSubmit={form.onSubmit(handleSubmit)}>
+            <NumberInput
+              label={t.topicPeriods.fieldImportance}
+              required
+              min={1}
+              max={20}
+              mt="sm"
+              {...form.getInputProps("importance")}
+            />
+            <Button type="submit" mt="md">
+              {t.common.save}
+            </Button>
+          </form>
+        )}
 
         {editing && statements.length === 0 && (
           <Text c="dimmed" size="sm" mt="md">
@@ -388,7 +419,9 @@ export function TopicPeriodsPage() {
                             </Table.Td>
                           );
                         })}
-                        <Table.Td c={sum === 100 ? "green" : "orange"}>{sum}</Table.Td>
+                        <Table.Td c={sum === 100 ? "green.9" : "orange.9"} fw={600}>
+                          {sum}
+                        </Table.Td>
                       </Table.Tr>
                     );
                   })}

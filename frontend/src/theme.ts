@@ -1,4 +1,4 @@
-import { createTheme, type MantineColorsTuple } from "@mantine/core";
+import { createTheme, type CSSVariablesResolver, type MantineColorsTuple } from "@mantine/core";
 
 import { themeConfig } from "./theme.config";
 
@@ -123,11 +123,33 @@ export const theme = createTheme({
   primaryColor: "brand",
   primaryShade: { light: 6, dark: 4 },
   autoContrast: true,
-  white: themeConfig.background,
+  white: themeConfig.surface,
   colors: {
     brand,
     red,
     yellow,
     dark,
+  },
+});
+
+// Mantine derives --mantine-color-body from --mantine-color-white by default, which
+// would make the page canvas match every input/dropdown (both read "white") — pinning
+// body back to the page background here keeps that distinction in light mode. Dark
+// mode already gets it for free from the generated `dark` ramp (body/default/border
+// sit at different, well-separated lightness steps), so it's left alone.
+//
+// --surface-card-bg is for the rare card/surface that needs to visibly stand out from
+// the page even though Paper/Card default to matching it (Mantine's own convention,
+// relying on a border for separation instead) — e.g. CoalitionsPage's per-row cards.
+// Only needed in light mode, where the page and Paper/Card share one flat background;
+// in dark mode the generated ramp already gives Paper/Card enough of its own definition.
+export const cssVariablesResolver: CSSVariablesResolver = () => ({
+  variables: {},
+  light: {
+    "--mantine-color-body": themeConfig.background,
+    "--surface-card-bg": themeConfig.surface,
+  },
+  dark: {
+    "--surface-card-bg": "var(--mantine-color-body)",
   },
 });
