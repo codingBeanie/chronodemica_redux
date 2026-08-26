@@ -183,58 +183,62 @@ export function SimulationPage() {
               <Text fw={600} mb="sm">
                 {t.simulation.resultsTitle}
               </Text>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <SortableTh
-                      label={t.simulation.columnParty}
-                      sortKey="party"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={toggleSort}
-                    />
-                    <SortableTh
-                      label={t.simulation.columnNationalVotes}
-                      sortKey="votes"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={toggleSort}
-                      align="right"
-                    />
-                    <SortableTh
-                      label={t.simulation.columnSeats}
-                      sortKey="seats"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={toggleSort}
-                      align="right"
-                    />
-                    <SortableTh
-                      label={t.parliamentPeriods.columnInGovernment}
-                      sortKey="in_government"
-                      activeKey={sortKey}
-                      direction={sortDir}
-                      onSort={toggleSort}
-                    />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {sortedTablePartyIds.map((partyId) => (
-                    <Table.Tr key={String(partyId)}>
-                      <Table.Td>{partyName(partyId)}</Table.Td>
-                      <Table.Td ta="right">{(nationalTotals.get(partyId) ?? 0).toLocaleString()}</Table.Td>
-                      <Table.Td ta="right">
-                        {parliamentPeriods.find((p) => p.party_id === partyId)?.seats ?? 0}
-                      </Table.Td>
-                      <Table.Td>
-                        <InGovernmentIcon
-                          inGovernment={parliamentPeriods.find((p) => p.party_id === partyId)?.in_government ?? false}
-                        />
-                      </Table.Td>
+              <div style={{ overflowX: "auto" }}>
+                <Table>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <SortableTh
+                        label={t.simulation.columnParty}
+                        sortKey="party"
+                        activeKey={sortKey}
+                        direction={sortDir}
+                        onSort={toggleSort}
+                      />
+                      <SortableTh
+                        label={t.simulation.columnNationalVotes}
+                        sortKey="votes"
+                        activeKey={sortKey}
+                        direction={sortDir}
+                        onSort={toggleSort}
+                        align="right"
+                      />
+                      <SortableTh
+                        label={t.simulation.columnSeats}
+                        sortKey="seats"
+                        activeKey={sortKey}
+                        direction={sortDir}
+                        onSort={toggleSort}
+                        align="right"
+                      />
+                      <SortableTh
+                        label={t.parliamentPeriods.columnInGovernment}
+                        sortKey="in_government"
+                        activeKey={sortKey}
+                        direction={sortDir}
+                        onSort={toggleSort}
+                      />
                     </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {sortedTablePartyIds.map((partyId) => (
+                      <Table.Tr key={String(partyId)}>
+                        <Table.Td>{partyName(partyId)}</Table.Td>
+                        <Table.Td ta="right">{(nationalTotals.get(partyId) ?? 0).toLocaleString()}</Table.Td>
+                        <Table.Td ta="right">
+                          {parliamentPeriods.find((p) => p.party_id === partyId)?.seats ?? 0}
+                        </Table.Td>
+                        <Table.Td>
+                          <InGovernmentIcon
+                            inGovernment={
+                              parliamentPeriods.find((p) => p.party_id === partyId)?.in_government ?? false
+                            }
+                          />
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </div>
             </>
           )}
         </>

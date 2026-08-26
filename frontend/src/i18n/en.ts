@@ -21,6 +21,7 @@ export const en = {
     sortNone: "Not sorted — activate to sort ascending",
   },
   nav: {
+    toggleMenu: "Toggle navigation menu",
     worlds: "Worlds",
     masterData: "Main Data",
     periods: "Periods",

@@ -103,55 +103,62 @@ export function DataTable<T, Key extends string>({
         </Alert>
       )}
 
-      <Table>
-        <Table.Thead>
-          <Table.Tr>
-            {effectiveColumns.map((col) =>
-              col.sortable === false ? (
-                <Table.Th key={col.key} ta={col.align}>
-                  {col.label}
-                </Table.Th>
-              ) : (
-                <SortableTh
-                  key={col.key}
-                  label={col.label}
-                  sortKey={col.key}
-                  activeKey={sortKey}
-                  direction={sortDir}
-                  onSort={toggleSort}
-                  align={col.align}
-                />
-              ),
-            )}
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {loading && (
+      {/* A table with several columns can want more width than a phone screen has —
+          Mantine's default table layout won't shrink columns past their content's
+          longest unbreakable word, so it can end up wider than the viewport. Scoping
+          the scroll to just this container keeps that contained here instead of
+          letting the whole page scroll sideways. */}
+      <div style={{ overflowX: "auto" }}>
+        <Table>
+          <Table.Thead>
             <Table.Tr>
-              <Table.Td colSpan={colSpan}>
-                <Loader size="sm" />
-              </Table.Td>
+              {effectiveColumns.map((col) =>
+                col.sortable === false ? (
+                  <Table.Th key={col.key} ta={col.align}>
+                    {col.label}
+                  </Table.Th>
+                ) : (
+                  <SortableTh
+                    key={col.key}
+                    label={col.label}
+                    sortKey={col.key}
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                    align={col.align}
+                  />
+                ),
+              )}
             </Table.Tr>
-          )}
-          {!loading &&
-            sortedItems.map((item) => (
-              <Table.Tr
-                key={getRowKey(item)}
-                onClick={onRowClick ? () => onRowClick(item) : undefined}
-                style={onRowClick ? { cursor: "pointer" } : undefined}
-              >
-                {effectiveColumns.map((col) => (
-                  <Table.Td key={col.key} ta={col.align}>
-                    {col.render(item)}
-                  </Table.Td>
-                ))}
+          </Table.Thead>
+          <Table.Tbody>
+            {loading && (
+              <Table.Tr>
+                <Table.Td colSpan={colSpan}>
+                  <Loader size="sm" />
+                </Table.Td>
               </Table.Tr>
-            ))}
-          {!loading && addRow && (
-            <AddRow colSpan={colSpan} onClick={addRow.onClick} disabled={addRow.disabled} label={addRow.label} />
-          )}
-        </Table.Tbody>
-      </Table>
+            )}
+            {!loading &&
+              sortedItems.map((item) => (
+                <Table.Tr
+                  key={getRowKey(item)}
+                  onClick={onRowClick ? () => onRowClick(item) : undefined}
+                  style={onRowClick ? { cursor: "pointer" } : undefined}
+                >
+                  {effectiveColumns.map((col) => (
+                    <Table.Td key={col.key} ta={col.align}>
+                      {col.render(item)}
+                    </Table.Td>
+                  ))}
+                </Table.Tr>
+              ))}
+            {!loading && addRow && (
+              <AddRow colSpan={colSpan} onClick={addRow.onClick} disabled={addRow.disabled} label={addRow.label} />
+            )}
+          </Table.Tbody>
+        </Table>
+      </div>
 
       {!loading && !error && items.length === 0 && emptyText && (
         <Text c="dimmed" mt="md">

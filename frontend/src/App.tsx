@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   AppShell,
+  Box,
   Burger,
   Center,
   Group,
@@ -102,12 +103,30 @@ function MainShell() {
   const t = useTranslation();
   const { logout } = useAuth();
   const { worlds, selectedWorldId, setSelectedWorldId } = useWorldContext();
-  const [opened, { toggle }] = useDisclosure();
+  const [opened, { toggle, close }] = useDisclosure();
   const location = useLocation();
   const navigate = useNavigate();
   const { setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme("light", { getInitialValueInEffect: true });
   const toggleColorScheme = () => setColorScheme(computedColorScheme === "dark" ? "light" : "dark");
+
+  // Navigating from the mobile drawer must close it — it renders as a full overlay,
+  // so leaving it open after a tap reads as "the menu just stays there."
+  const goTo = (path: string) => {
+    navigate(path);
+    close();
+  };
+
+  const worldSelector = (
+    <Select
+      aria-label={t.worldSelector.label}
+      placeholder={t.worldSelector.placeholder}
+      data={worlds.map((world) => ({ value: String(world.id), label: world.name }))}
+      value={selectedWorldId ? String(selectedWorldId) : null}
+      onChange={(value) => value && setSelectedWorldId(Number(value))}
+      w={{ base: "100%", sm: 220 }}
+    />
+  );
 
   const navTree: NavCategory[] = [
     {
@@ -159,27 +178,20 @@ function MainShell() {
 
   return (
     <AppShell
-      header={{ height: 60 }}
+      header={{ height: { base: 108, sm: 60 } }}
       navbar={{ width: 260, breakpoint: "sm", collapsed: { mobile: !opened } }}
       footer={{ height: 28 }}
       padding="md"
     >
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+        <Group h={60} px="md" justify="space-between" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap">
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label={t.nav.toggleMenu} />
             <img src={logoUrl} alt="" height={32} width={32} />
             <Title order={3}>{t.app.title}</Title>
           </Group>
-          <Group>
-            <Select
-              aria-label={t.worldSelector.label}
-              placeholder={t.worldSelector.placeholder}
-              data={worlds.map((world) => ({ value: String(world.id), label: world.name }))}
-              value={selectedWorldId ? String(selectedWorldId) : null}
-              onChange={(value) => value && setSelectedWorldId(Number(value))}
-              w={220}
-            />
+          <Group gap="xs" wrap="nowrap">
+            <Box visibleFrom="sm">{worldSelector}</Box>
             <ActionIcon
               variant="default"
               size="lg"
@@ -193,13 +205,20 @@ function MainShell() {
             </ActionIcon>
           </Group>
         </Group>
+        <Box hiddenFrom="sm" px="md" pb="xs">
+          {worldSelector}
+        </Box>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      {/* Mantine's mobile drawer state otherwise stretches to the viewport's full width
+          (no content visible behind it) — capping it reads as an actual sliding drawer,
+          not a full-screen takeover, and matches the fixed 260px width used above the
+          breakpoint. */}
+      <AppShell.Navbar p="md" maw={{ base: 300, sm: "100%" }}>
         <NavLink
           label={t.nav.worlds}
           active={location.pathname === worldsRoute.path}
-          onClick={() => navigate(worldsRoute.path)}
+          onClick={() => goTo(worldsRoute.path)}
         />
         {navTree.map((category) => (
           <NavLink key={category.label} label={category.label} defaultOpened>
@@ -208,7 +227,7 @@ function MainShell() {
                 key={child.path}
                 label={child.label}
                 active={location.pathname === child.path}
-                onClick={() => navigate(child.path)}
+                onClick={() => goTo(child.path)}
               />
             ))}
           </NavLink>

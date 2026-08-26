@@ -1,4 +1,5 @@
 import { Text } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 import { themeConfig } from "../theme.config";
 import { SegmentedBar } from "./SegmentedBar";
@@ -17,9 +18,6 @@ interface VotingResultsChartProps {
   parties: VotingResultsChartParty[];
 }
 
-const BAR_HEIGHT = 200;
-const COLUMN_WIDTH = 120;
-
 /**
  * One compact column per party: bar (height = vote share), the vote share itself,
  * a connected gray bar with the party's short name, and its own small box for the
@@ -30,19 +28,25 @@ const COLUMN_WIDTH = 120;
  * DiagramSurface.tsx.
  */
 export function VotingResultsChart({ parties }: VotingResultsChartProps) {
+  // Narrower columns on small screens so a typical handful of parties fits without
+  // needing to scroll at all; larger party counts still scroll within this chart's
+  // own container rather than the whole page (see the overflowX wrapper below).
+  const isMobile = useMediaQuery("(max-width: 36em)");
+  const columnWidth = isMobile ? 84 : 120;
+  const barHeight = isMobile ? 140 : 200;
   const maxPercent = Math.max(...parties.map((party) => party.percent), 1);
 
   return (
-    <div style={{ maxWidth: parties.length * COLUMN_WIDTH, margin: "0 auto", overflowX: "auto" }}>
+    <div style={{ maxWidth: parties.length * columnWidth, margin: "0 auto", overflowX: "auto" }}>
       {/* Bars */}
       <div style={{ display: "flex" }}>
         {parties.map((party) => (
-          <div key={party.id} style={{ width: COLUMN_WIDTH, flexShrink: 0, padding: "0 3px" }}>
+          <div key={party.id} style={{ width: columnWidth, flexShrink: 0, padding: "0 3px" }}>
             <SegmentedBar
               orientation="vertical"
               segments={[{ value: party.percent, color: party.color }]}
               total={maxPercent}
-              length={BAR_HEIGHT}
+              length={barHeight}
             />
           </div>
         ))}
@@ -51,7 +55,7 @@ export function VotingResultsChart({ parties }: VotingResultsChartProps) {
       {/* Percentage — connected strip, blends with the surface's own white */}
       <div style={{ display: "flex" }}>
         {parties.map((party) => (
-          <div key={party.id} style={{ width: COLUMN_WIDTH, flexShrink: 0, textAlign: "center", padding: "8px 0" }}>
+          <div key={party.id} style={{ width: columnWidth, flexShrink: 0, textAlign: "center", padding: "8px 0" }}>
             <Text fw={800} size="xl" c={themeConfig.diagram.text}>
               {Math.round(party.percent)}%
             </Text>
@@ -65,7 +69,7 @@ export function VotingResultsChart({ parties }: VotingResultsChartProps) {
           <div
             key={party.id}
             style={{
-              width: COLUMN_WIDTH,
+              width: columnWidth,
               flexShrink: 0,
               textAlign: "center",
               padding: "6px 4px",
@@ -82,7 +86,7 @@ export function VotingResultsChart({ parties }: VotingResultsChartProps) {
       {/* Change vs. previous period — its own small box per party */}
       <div style={{ display: "flex" }}>
         {parties.map((party) => (
-          <div key={party.id} style={{ width: COLUMN_WIDTH, flexShrink: 0, padding: "4px 3px 0" }}>
+          <div key={party.id} style={{ width: columnWidth, flexShrink: 0, padding: "4px 3px 0" }}>
             <div
               style={{
                 background: themeConfig.diagram.changeBoxBackground,

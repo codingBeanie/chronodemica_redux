@@ -77,73 +77,93 @@ export function CoalitionsPage() {
           {(!result || result.coalitions.length === 0) && <Text c="dimmed">{t.coalitions.empty}</Text>}
 
           {result && result.coalitions.length > 0 && (
-            <>
-              <div style={{ position: "relative" }}>
-                <Text
-                  size="sm"
-                  c="dimmed"
-                  style={{
-                    position: "absolute",
-                    left: `${(result.majority_threshold / result.total_seats) * 100}%`,
-                    transform: "translateX(-50%)",
-                    top: 0,
-                  }}
-                >
-                  {t.coalitions.thresholdMarkerLabel(result.majority_threshold)}
-                </Text>
+            <Stack gap="sm" mt={28}>
+              {result.coalitions.map((coalition, index) => {
+                const isActive = isSameCoalition(coalition.party_ids, activePartyIds);
+                const sortedPartyIds = [...coalition.party_ids].sort((a, b) => partySeats(b) - partySeats(a));
 
-                <Stack gap="sm" mt={28}>
-                  {result.coalitions.map((coalition) => {
-                    const isActive = isSameCoalition(coalition.party_ids, activePartyIds);
-                    const sortedPartyIds = [...coalition.party_ids].sort((a, b) => partySeats(b) - partySeats(a));
-                    return (
-                      <Group key={coalition.party_ids.join("-")} wrap="nowrap" gap="sm">
-                        <div style={{ flex: 1 }}>
-                          <SegmentedBar
-                            orientation="horizontal"
-                            thickness={36}
-                            total={result.total_seats}
-                            threshold={{ value: result.majority_threshold }}
-                            segments={sortedPartyIds.map((partyId) => {
-                              const p = party(partyId);
-                              return {
-                                key: partyId,
-                                value: partySeats(partyId),
-                                color: p?.color_bg ?? "#adb5bd",
-                                textColor: p?.color_text,
-                                label: `${p?.abbreviation ?? "-"} ${partySeats(partyId)}`,
-                              };
-                            })}
-                          />
-                        </div>
-                        <Text fw={700} w={40} flex="0 0 auto">
-                          {coalition.total_seats}
-                        </Text>
-                        {/* Fixed-size slot regardless of state, on BOTH axes — the bar to its
-                            left is flex:1 and absorbs whatever width this slot doesn't use, so
-                            if this slot's actual rendered width varies (e.g. a `minWidth` that
-                            a wider Badge grows past), the bar shrinks in that one row only,
-                            desyncing its pixels-per-seat scale from every other row's bar and
-                            throwing off the shared threshold line's alignment. `width` (not
-                            `minWidth`) + `flexShrink: 0` guarantees this slot is pixel-identical
-                            across every row regardless of which state it's in. */}
-                        <div style={{ height: 36, width: 190, flexShrink: 0, display: "flex", alignItems: "center" }}>
-                          {isActive ? (
-                            <Badge color="green" size="lg" style={{ whiteSpace: "nowrap" }}>
-                              {t.coalitions.activeLabel}
-                            </Badge>
-                          ) : (
-                            <Button size="sm" onClick={() => handleActivate(coalition)}>
-                              {t.coalitions.activateButton}
-                            </Button>
-                          )}
-                        </div>
+                // Position relative to the bar's OWN rendered width, not the row's — the row
+                // also contains fixed-width siblings (seat total, action button), so a % based
+                // on the whole row would land at the wrong spot inside the (narrower) bar.
+                // Rendered once, above the first coalition's bar only.
+                const bar = (
+                  <div style={{ position: "relative", width: "100%" }}>
+                    {index === 0 && (
+                      <Text
+                        size="sm"
+                        c="dimmed"
+                        style={{
+                          position: "absolute",
+                          left: `${(result.majority_threshold / result.total_seats) * 100}%`,
+                          transform: "translateX(-50%)",
+                          top: -24,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {t.coalitions.thresholdMarkerLabel(result.majority_threshold)}
+                      </Text>
+                    )}
+                    <SegmentedBar
+                      orientation="horizontal"
+                      thickness={36}
+                      total={result.total_seats}
+                      threshold={{ value: result.majority_threshold }}
+                      segments={sortedPartyIds.map((partyId) => {
+                        const p = party(partyId);
+                        return {
+                          key: partyId,
+                          value: partySeats(partyId),
+                          color: p?.color_bg ?? "#adb5bd",
+                          textColor: p?.color_text,
+                          label: `${p?.abbreviation ?? "-"} ${partySeats(partyId)}`,
+                        };
+                      })}
+                    />
+                  </div>
+                );
+
+                const action = isActive ? (
+                  <Badge color="green" size="lg" style={{ whiteSpace: "nowrap" }}>
+                    {t.coalitions.activeLabel}
+                  </Badge>
+                ) : (
+                  <Button size="sm" onClick={() => handleActivate(coalition)}>
+                    {t.coalitions.activateButton}
+                  </Button>
+                );
+
+                return (
+                  <div key={coalition.party_ids.join("-")}>
+                    {/* Desktop/tablet: bar, seat total, and action all share one row — each
+                        given a fixed-width slot (see the width/flexShrink note) so the bar's
+                        rendered width, and therefore its threshold line, is identical across
+                        every coalition regardless of which action state that row is in. */}
+                    <Group wrap="nowrap" gap="sm" visibleFrom="sm">
+                      <div style={{ flex: 1 }}>{bar}</div>
+                      <Text fw={700} w={40} flex="0 0 auto">
+                        {coalition.total_seats}
+                      </Text>
+                      <div
+                        style={{ height: 36, width: 190, flexShrink: 0, display: "flex", alignItems: "center" }}
+                      >
+                        {action}
+                      </div>
+                    </Group>
+
+                    {/* Mobile: the bar needs the full row width to stay legible (segment
+                        labels), so a fixed-width trailing slot isn't viable here — stack the
+                        seat total + action below it instead of squeezing them beside it. */}
+                    <Stack gap={4} hiddenFrom="sm">
+                      {bar}
+                      <Group justify="space-between" wrap="nowrap">
+                        <Text fw={700}>{coalition.total_seats}</Text>
+                        {action}
                       </Group>
-                    );
-                  })}
-                </Stack>
-              </div>
-            </>
+                    </Stack>
+                  </div>
+                );
+              })}
+            </Stack>
           )}
         </>
       )}
