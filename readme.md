@@ -128,13 +128,8 @@ services:
     environment:
       DATABASE_URL: sqlite:////data/chronodemica.db
       CORS_ORIGINS: '["http://localhost:5173"]'
-      FRONTEND_URL: http://localhost:5173
-      SESSION_SECRET_KEY: ${SESSION_SECRET_KEY:?set a long random value}
-      OIDC_ISSUER: ${OIDC_ISSUER:?set your OIDC provider's issuer URL}
-      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?set your OIDC client id}
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set your OIDC client secret}
-      OIDC_REDIRECT_URI: http://localhost:8010/api/auth/oidc/callback
-      OIDC_SCOPES: openid profile email
+    env_file:
+      - .env
     volumes:
       - backend_data:/data
     restart: unless-stopped
@@ -151,10 +146,8 @@ volumes:
   backend_data:
 ```
 
-The `OIDC_*`/`SESSION_SECRET_KEY` values above are required — Compose will refuse to start
-without them. Rather than editing them into `docker-compose.yml` directly, put a `.env` file next
-to it (same directory) — Docker Compose reads that automatically and substitutes the `${...}`
-placeholders:
+`env_file` passes a `.env` file, next to `docker-compose.yml`, straight through as the backend
+container's environment — this is where OIDC login is configured:
 
 ```bash
 # .env, next to docker-compose.yml
@@ -166,10 +159,14 @@ OIDC_CLIENT_SECRET=your-client-secret
 
 (If you're doing this from a clone of this repo rather than a fresh directory, a template for
 exactly this file already exists at `.env.example` in the repo root — `cp .env.example .env` and
-fill it in, instead of typing the above by hand. Either way, this root-level `.env` is only for
-Docker Compose's own variable substitution — it's unrelated to `backend/.env` from the local-dev
-setup above, which is what the backend reads when *not* running under Docker. Both are git-ignored,
-so real secrets never end up committed.)
+fill it in, instead of typing the above by hand. Either way, this root-level `.env` is unrelated to
+`backend/.env` from the local-dev setup above, which is what the backend reads when *not* running
+under Docker. Both are git-ignored, so real secrets never end up committed.)
+
+Compose refuses to start if `.env` is missing entirely, but it doesn't check what's actually in
+it — an empty or partially-filled `.env` still starts the container, just with OIDC unconfigured
+(login fails at request time, not at startup) and an insecure built-in `SESSION_SECRET_KEY`. Make
+sure `.env` is actually filled in before exposing this beyond your own machine.
 
 Then start it with:
 
