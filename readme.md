@@ -168,6 +168,23 @@ it — an empty or partially-filled `.env` still starts the container, just with
 (login fails at request time, not at startup) and an insecure built-in `SESSION_SECRET_KEY`. Make
 sure `.env` is actually filled in before exposing this beyond your own machine.
 
+**Deploying behind a real domain / reverse proxy?** Two more values in `.env` need to change from
+their localhost defaults, or login will fail with something like *"redirect_uri ... is not
+registered for this client"*:
+
+```bash
+FRONTEND_URL=https://your-domain.example.com
+OIDC_REDIRECT_URI=https://your-domain.example.com/api/auth/oidc/callback
+```
+
+The frontend container's nginx proxies `/api/` straight through to the backend internally (see
+`frontend/nginx.conf`), so there's only **one** public URL for the whole app — the domain your
+reverse proxy points at the `frontend` container. The backend is never reached directly from the
+outside, so it doesn't need its own domain, and its published port in `docker-compose.yml` is
+irrelevant to this. Whatever you set `OIDC_REDIRECT_URI` to must then be registered — character
+for character, including `https://` and the exact path — as the allowed redirect URI for this
+client at your OIDC provider; a mismatch here is exactly what produces that error.
+
 Then start it with:
 
 ```bash
