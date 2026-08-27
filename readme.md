@@ -74,6 +74,24 @@ population group to see exactly which statements drove the outcome.
 - Python 3.12+ and [uv](https://docs.astral.sh/uv/)
 - Node.js 20+ and npm
 
+### Configure OIDC
+
+Login is exclusively via OIDC, so the backend needs your provider's credentials before it can
+start. The template lives at `backend/.env.example`; copy it to `backend/.env` (same folder,
+right next to it) and fill in the real values:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+`backend/.env` is where all backend configuration — including the OIDC parameters
+(`OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_SCOPES`) and
+`SESSION_SECRET_KEY` — is actually maintained; `backend/.env.example` is only the checked-in
+template and is never read by the app itself. `backend/.env` is git-ignored, so your real secrets
+never end up in the repo — never put real credentials into `.env.example`. See the comments in
+`backend/.env.example` for what each value means and where to get it from your provider (the
+callback/redirect URI you register there must match `OIDC_REDIRECT_URI` exactly).
+
 ### Backend
 
 ```bash
@@ -92,9 +110,8 @@ npm install
 npm run dev
 ```
 
-Before logging in, configure your OIDC provider's credentials in `backend/.env` (see
-`backend/.env.example`). Open the app at `http://localhost:5173` and log in — the first person
-to complete a login becomes the sole, permanent admin, and can then create their first world.
+Open the app at `http://localhost:5173` and log in — the first person to complete a login
+becomes the sole, permanent admin, and can then create their first world.
 
 ## Running with Docker
 
@@ -133,6 +150,26 @@ services:
 volumes:
   backend_data:
 ```
+
+The `OIDC_*`/`SESSION_SECRET_KEY` values above are required — Compose will refuse to start
+without them. Rather than editing them into `docker-compose.yml` directly, put a `.env` file next
+to it (same directory) — Docker Compose reads that automatically and substitutes the `${...}`
+placeholders:
+
+```bash
+# .env, next to docker-compose.yml
+SESSION_SECRET_KEY=a-long-random-value
+OIDC_ISSUER=https://your-provider.example.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+```
+
+(If you're doing this from a clone of this repo rather than a fresh directory, a template for
+exactly this file already exists at `.env.example` in the repo root — `cp .env.example .env` and
+fill it in, instead of typing the above by hand. Either way, this root-level `.env` is only for
+Docker Compose's own variable substitution — it's unrelated to `backend/.env` from the local-dev
+setup above, which is what the backend reads when *not* running under Docker. Both are git-ignored,
+so real secrets never end up committed.)
 
 Then start it with:
 
