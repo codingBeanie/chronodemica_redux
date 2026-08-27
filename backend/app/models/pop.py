@@ -2,8 +2,8 @@ from sqlmodel import Field, SQLModel
 
 
 class PopBase(SQLModel):
-    abbreviation: str
     name: str
+    description: str
 
 
 class Pop(PopBase, table=True):
@@ -16,8 +16,8 @@ class PopCreate(PopBase):
 
 
 class PopUpdate(SQLModel):
-    abbreviation: str | None = None
     name: str | None = None
+    description: str | None = None
 
 
 class PopRead(PopBase):

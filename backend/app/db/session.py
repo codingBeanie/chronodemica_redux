@@ -131,6 +131,26 @@ def _migrate_user_table_to_oidc() -> None:
         conn.execute(text("DROP TABLE user"))
 
 
+def _migrate_pop_abbreviation_to_description() -> None:
+    """Pop dropped `abbreviation` (redundant with `name`) in favor of a free-text
+    `description`, matching Topic's name+description shape. Existing abbreviations
+    aren't meaningful descriptions, so this is a schema-only migration — existing
+    pops just get an empty description, editable afterward.
+    """
+    db_inspector = inspect(engine)
+    if not db_inspector.has_table("pop"):
+        return
+
+    pop_columns = {col["name"] for col in db_inspector.get_columns("pop")}
+    if "abbreviation" not in pop_columns:
+        return
+
+    with engine.begin() as conn:
+        if "description" not in pop_columns:
+            conn.execute(text("ALTER TABLE pop ADD COLUMN description VARCHAR NOT NULL DEFAULT ''"))
+        conn.execute(text("ALTER TABLE pop DROP COLUMN abbreviation"))
+
+
 def init_db() -> None:
     db_path = make_url(settings.database_url).database
     if db_path and db_path != ":memory:":
@@ -138,6 +158,7 @@ def init_db() -> None:
     _migrate_seats_from_world_to_period()
     _rename_votes_table_if_party_id_not_null()
     _migrate_user_table_to_oidc()
+    _migrate_pop_abbreviation_to_description()
     SQLModel.metadata.create_all(engine)
     _finish_votes_migration_and_drop_misc_party()
 

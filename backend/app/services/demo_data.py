@@ -60,22 +60,25 @@ PARTIES = [
 
 POPS = [
     {
-        "abbreviation": "URB",
+        "key": "URB",
         "name": "Urban Progressives",
+        "description": "Younger, urban voters focused on social progress and public services.",
         "population": 250_000,
         "turnout": 0.65,
         "eligibility": 0.82,
     },
     {
-        "abbreviation": "SUB",
+        "key": "SUB",
         "name": "Suburban Families",
+        "description": "Middle-class suburban households balancing work, family, and moderate politics.",
         "population": 400_000,
         "turnout": 0.70,
         "eligibility": 0.85,
     },
     {
-        "abbreviation": "RUR",
+        "key": "RUR",
         "name": "Rural Traditionalists",
+        "description": "Rural communities favoring tradition, agriculture, and local autonomy.",
         "population": 150_000,
         "turnout": 0.75,
         "eligibility": 0.80,
@@ -176,10 +179,10 @@ def seed_demo_data(session: Session, world: World) -> None:
     session.add_all(parties.values())
 
     pops = {
-        data["abbreviation"]: Pop(
+        data["key"]: Pop(
             world_id=world.id,
-            abbreviation=data["abbreviation"],
             name=data["name"],
+            description=data["description"],
         )
         for data in POPS
     }
@@ -208,7 +211,7 @@ def seed_demo_data(session: Session, world: World) -> None:
     for data in POPS:
         session.add(
             PopPeriod(
-                pop_id=pops[data["abbreviation"]].id,
+                pop_id=pops[data["key"]].id,
                 period_id=period.id,
                 population=data["population"],
                 turnout=data["turnout"],
@@ -239,11 +242,11 @@ def seed_demo_data(session: Session, world: World) -> None:
                 )
             )
 
-        for abbreviation, approvals in topic_data["pop_approvals"].items():
+        for pop_key, approvals in topic_data["pop_approvals"].items():
             for text, value in zip(topic_data["statements"], approvals, strict=True):
                 session.add(
                     PopStatement(
-                        pop_id=pops[abbreviation].id,
+                        pop_id=pops[pop_key].id,
                         statement_id=statements[text].id,
                         period_id=period.id,
                         approval=value,

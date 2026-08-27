@@ -1,4 +1,4 @@
-import { Badge, Button, Modal, TextInput } from "@mantine/core";
+import { Button, Modal, Textarea, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -13,11 +13,11 @@ import { useCrud } from "../hooks/useCrud";
 import { useTranslation } from "../i18n/I18nProvider";
 
 const emptyValues: PopInput = {
-  abbreviation: "",
   name: "",
+  description: "",
 };
 
-type SortKey = "name";
+type SortKey = "name" | "description";
 
 export function PopsPage() {
   const t = useTranslation();
@@ -35,8 +35,8 @@ export function PopsPage() {
   const openEdit = (pop: Pop) => {
     setEditing(pop);
     form.setValues({
-      abbreviation: pop.abbreviation,
       name: pop.name,
+      description: pop.description,
     });
     open();
   };
@@ -66,18 +66,8 @@ export function PopsPage() {
   };
 
   const columns: DataTableColumn<Pop, SortKey | "actions">[] = [
-    {
-      key: "name",
-      label: t.pops.columnGroup,
-      render: (pop) => (
-        <>
-          <Badge variant="light" mr="xs">
-            {pop.abbreviation}
-          </Badge>
-          {pop.name}
-        </>
-      ),
-    },
+    { key: "name", label: t.pops.columnName, render: (pop) => pop.name },
+    { key: "description", label: t.pops.columnDescription, render: (pop) => pop.description },
     {
       key: "actions",
       label: null,
@@ -106,7 +96,7 @@ export function PopsPage() {
         columns={columns}
         items={items}
         getRowKey={(pop) => pop.id}
-        getSortValue={(pop, key) => (key === "name" ? pop.name : "")}
+        getSortValue={(pop, key) => (key === "actions" ? "" : pop[key])}
         initialSortKey="name"
         loading={loading}
         error={error}
@@ -118,8 +108,8 @@ export function PopsPage() {
 
       <Modal opened={opened} onClose={close} title={editing ? t.pops.modalEdit : t.pops.modalNew}>
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          <TextInput label={t.pops.fieldAbbreviation} required {...form.getInputProps("abbreviation")} />
-          <TextInput label={t.pops.fieldName} required mt="sm" {...form.getInputProps("name")} />
+          <TextInput label={t.pops.fieldName} required {...form.getInputProps("name")} />
+          <Textarea label={t.pops.fieldDescription} mt="sm" {...form.getInputProps("description")} />
           <Button type="submit" mt="md" fullWidth>
             {t.common.save}
           </Button>

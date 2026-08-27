@@ -31,8 +31,8 @@ export type PartyInput = Omit<Party, "id" | "world_id">;
 export interface Pop {
   id: number;
   world_id: number;
-  abbreviation: string;
   name: string;
+  description: string;
 }
 export type PopInput = Omit<Pop, "id" | "world_id">;
 
