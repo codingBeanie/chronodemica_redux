@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import settings
 from app.db.session import init_db
@@ -45,6 +46,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Only used for the short OIDC login handshake (state/nonce CSRF protection
+# between the redirect to the provider and the callback) — normal API
+# requests stay bearer-token based, not cookie/session based.
+app.add_middleware(SessionMiddleware, secret_key=settings.session_secret_key, same_site="lax", max_age=600)
 
 app.include_router(auth.router)
 

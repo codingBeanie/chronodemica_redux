@@ -5,47 +5,59 @@ import { setAuthToken, setUnauthorizedHandler } from "../api/client";
 
 const TOKEN_STORAGE_KEY = "chronodemica.authToken";
 
-type AuthStatus = "loading" | "needs-setup" | "needs-login" | "authenticated";
+type AuthStatus = "loading" | "needs-login" | "authenticated";
 
 interface AuthContextValue {
   status: AuthStatus;
-  username: string | null;
-  setup: (username: string, password: string) => Promise<void>;
-  login: (username: string, password: string) => Promise<void>;
+  email: string | null;
+  displayName: string | null;
+  isAdmin: boolean;
+  startLogin: () => void;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Pulls a token handed back by the OIDC callback redirect (`#token=...`) out of
+// the URL fragment — it never reaches the server (fragments aren't sent in
+// requests), so this is the one place that has to read it.
+function consumeTokenFromUrlFragment(): string | null {
+  if (!window.location.hash.startsWith("#token=")) return null;
+  const token = decodeURIComponent(window.location.hash.slice("#token=".length));
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+  return token;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
-  const [username, setUsername] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
       setAuthToken(null);
-      setUsername(null);
+      setEmail(null);
+      setDisplayName(null);
+      setIsAdmin(false);
       setStatus("needs-login");
     });
 
     (async () => {
-      const authStatus = await authApi.status();
-      if (!authStatus.configured) {
-        setStatus("needs-setup");
-        return;
-      }
-
-      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-      if (!storedToken) {
+      const token = consumeTokenFromUrlFragment() ?? localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (!token) {
         setStatus("needs-login");
         return;
       }
 
-      setAuthToken(storedToken);
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      setAuthToken(token);
       try {
         const me = await authApi.me();
-        setUsername(me.username);
+        setEmail(me.email);
+        setDisplayName(me.display_name);
+        setIsAdmin(me.is_admin);
         setStatus("authenticated");
       } catch {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -57,20 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, []);
 
-  const setup = async (usernameInput: string, password: string) => {
-    const response = await authApi.setup(usernameInput, password);
-    localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
-    setAuthToken(response.token);
-    setUsername(response.username);
-    setStatus("authenticated");
-  };
-
-  const login = async (usernameInput: string, password: string) => {
-    const response = await authApi.login(usernameInput, password);
-    localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
-    setAuthToken(response.token);
-    setUsername(response.username);
-    setStatus("authenticated");
+  const startLogin = () => {
+    window.location.href = authApi.loginUrl;
   };
 
   const logout = async () => {
@@ -81,12 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setAuthToken(null);
-    setUsername(null);
+    setEmail(null);
+    setDisplayName(null);
+    setIsAdmin(false);
     setStatus("needs-login");
   };
 
   return (
-    <AuthContext.Provider value={{ status, username, setup, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ status, email, displayName, isAdmin, startLogin, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 

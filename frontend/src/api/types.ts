@@ -8,13 +8,11 @@ export interface World {
 }
 export type WorldInput = Omit<World, "id" | "owner_id">;
 
-export interface AuthStatus {
-  configured: boolean;
-}
-
-export interface AuthResponse {
-  token: string;
-  username: string;
+export interface MeResponse {
+  id: number;
+  email: string | null;
+  display_name: string | null;
+  is_admin: boolean;
 }
 
 export interface Party {

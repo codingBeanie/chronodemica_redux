@@ -60,8 +60,7 @@ export default function App() {
   const auth = useAuth();
 
   if (auth.status === "loading") return <FullScreenLoader />;
-  if (auth.status === "needs-setup") return <AuthGate mode="needs-setup" />;
-  if (auth.status === "needs-login") return <AuthGate mode="needs-login" />;
+  if (auth.status === "needs-login") return <AuthGate />;
 
   return (
     <WorldProvider>

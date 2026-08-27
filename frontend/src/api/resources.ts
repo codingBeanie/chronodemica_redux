@@ -1,8 +1,7 @@
 import { API_BASE_URL, apiFetch, apiHeaders } from "./client";
 import type {
-  AuthResponse,
-  AuthStatus,
   CoalitionsResult,
+  MeResponse,
   ParliamentPeriod,
   Party,
   PartyInput,
@@ -60,13 +59,9 @@ function createReadOnlyResource<T>(path: string) {
 }
 
 export const authApi = {
-  status: () => apiFetch<AuthStatus>("/api/auth/status"),
-  setup: (username: string, password: string) =>
-    apiFetch<AuthResponse>("/api/auth/setup", { method: "POST", body: JSON.stringify({ username, password }) }),
-  login: (username: string, password: string) =>
-    apiFetch<AuthResponse>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  loginUrl: `${API_BASE_URL}/api/auth/oidc/login`,
   logout: () => apiFetch<void>("/api/auth/logout", { method: "POST" }),
-  me: () => apiFetch<{ username: string }>("/api/auth/me"),
+  me: () => apiFetch<MeResponse>("/api/auth/me"),
 };
 
 export const worldsApi = createResource<World, WorldInput>("/api/worlds");

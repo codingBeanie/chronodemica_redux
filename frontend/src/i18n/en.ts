@@ -39,16 +39,9 @@ export const en = {
     votingBehaviour: "Voting Behaviour",
   },
   auth: {
-    setupTitle: "Set up your account",
-    setupSubtitle: "No account exists yet. Choose a username and password to protect this installation.",
     loginTitle: "Log in",
-    loginSubtitle: "Enter your credentials to continue.",
-    fieldUsername: "Username",
-    fieldPassword: "Password",
-    fieldConfirmPassword: "Confirm password",
-    setupButton: "Create account",
+    loginSubtitle: "Continue with your organization's login to access Chronodemica.",
     loginButton: "Log in",
-    passwordMismatch: "Passwords do not match.",
     logoutButton: "Log out",
   },
   worldSelector: {

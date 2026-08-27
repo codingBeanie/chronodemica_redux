@@ -6,6 +6,13 @@ services:
     environment:
       DATABASE_URL: sqlite:////data/chronodemica.db
       CORS_ORIGINS: '["http://localhost:5173"]'
+      FRONTEND_URL: http://localhost:5173
+      SESSION_SECRET_KEY: ${SESSION_SECRET_KEY:?set a long random value}
+      OIDC_ISSUER: ${OIDC_ISSUER:?set your OIDC provider's issuer URL}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?set your OIDC client id}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set your OIDC client secret}
+      OIDC_REDIRECT_URI: http://localhost:8010/api/auth/oidc/callback
+      OIDC_SCOPES: openid profile email
     volumes:
       - backend_data:/data
     restart: unless-stopped

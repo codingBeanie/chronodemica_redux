@@ -59,7 +59,8 @@ population group to see exactly which statements drove the outcome.
 - World export and import as a single portable SQLite file, for backups or sharing a world
 - One-click demo data seeding to explore the app without building a world from scratch
 - Light and dark themes
-- Single-user authentication (username and password); everything else is scoped per world
+- Multi-user authentication via OIDC; the first person to ever log in becomes the sole,
+  permanent admin, everything else is scoped per world
 
 ## Tech stack
 
@@ -91,8 +92,9 @@ npm install
 npm run dev
 ```
 
-Open the app at `http://localhost:5173`. On first launch you will be asked to choose a username
-and password for this installation; from there you can create your first world.
+Before logging in, configure your OIDC provider's credentials in `backend/.env` (see
+`backend/.env.example`). Open the app at `http://localhost:5173` and log in — the first person
+to complete a login becomes the sole, permanent admin, and can then create their first world.
 
 ## Running with Docker
 
@@ -109,6 +111,13 @@ services:
     environment:
       DATABASE_URL: sqlite:////data/chronodemica.db
       CORS_ORIGINS: '["http://localhost:5173"]'
+      FRONTEND_URL: http://localhost:5173
+      SESSION_SECRET_KEY: ${SESSION_SECRET_KEY:?set a long random value}
+      OIDC_ISSUER: ${OIDC_ISSUER:?set your OIDC provider's issuer URL}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?set your OIDC client id}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set your OIDC client secret}
+      OIDC_REDIRECT_URI: http://localhost:8010/api/auth/oidc/callback
+      OIDC_SCOPES: openid profile email
     volumes:
       - backend_data:/data
     restart: unless-stopped
@@ -138,11 +147,6 @@ restarts and image updates. To upgrade to the latest published image, run
 
 This same repository can still be built locally instead — see `backend/Dockerfile` and
 `frontend/Dockerfile` — for example while developing against a modified copy of the code.
-
-## Roadmap
-
-- Broader authentication options (OIDC support, e.g. via Pocket ID) beyond the current single-user
-  login
 
 ## AI disclaimer
 
