@@ -7,6 +7,7 @@ import { DiagramSurface } from "./DiagramSurface";
 interface ParliamentHemicycleParty {
   id: number;
   name: string;
+  abbreviation: string;
   color: string;
   seats: number;
   seatOrientation: number;
@@ -83,7 +84,7 @@ export function ParliamentHemicycle({ parties }: { parties: ParliamentHemicycleP
               }}
             />
             <Text size="sm" c="dimmed">
-              {party.name} ({party.seats})
+              ({party.abbreviation}) {party.name} ({party.seats})
             </Text>
           </Group>
         ))}

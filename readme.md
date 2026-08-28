@@ -110,7 +110,7 @@ npm install
 npm run dev
 ```
 
-Open the app at `http://localhost:5173` and log in — the first person to complete a login
+Open the app at `http://localhost:5180` and log in — the first person to complete a login
 becomes the sole, permanent admin, and can then create their first world.
 
 ## Running with Docker

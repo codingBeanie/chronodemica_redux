@@ -8,7 +8,7 @@ import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useTranslation } from "../i18n/I18nProvider";
-import { isPartyActiveAt } from "../utils/partyDisplay";
+import { isPartyActiveAt, partyNameWithAbbreviation } from "../utils/partyDisplay";
 
 export function PartyPeriodsPage() {
   const t = useTranslation();
@@ -123,7 +123,7 @@ export function PartyPeriodsPage() {
                   const popularity = popularityDrafts[party.id] ?? item.popularity;
                   return (
                     <Table.Tr key={party.id}>
-                      <Table.Td>{party.name}</Table.Td>
+                      <Table.Td>{partyNameWithAbbreviation(party)}</Table.Td>
                       <Table.Td>
                         <NumberInput
                           value={popularity}

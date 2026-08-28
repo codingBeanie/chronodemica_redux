@@ -12,7 +12,9 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   server: {
-    port: 5173,
+    // Deliberately not Vite's 5173 default — kept clear for other projects
+    // that use it.
+    port: 5180,
     proxy: {
       // Mirrors the /api proxy nginx does in production (see nginx.conf), so the
       // frontend can always call relative paths regardless of environment.

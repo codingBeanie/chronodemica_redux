@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
-from app.config.voting_systems import VOTING_SYSTEM_CONFIGS
+from app.config.voting_systems import VOTING_SYSTEM_CONFIGS, ThresholdType
 from app.models.parliament_period import ParliamentPeriod
 from app.models.party_period import PartyPeriod
 from app.models.party_statement import PartyStatement
@@ -184,10 +184,20 @@ def run_simulation(session: Session, period: Period) -> None:
     total_national_votes = sum(national_totals.values())
     if total_national_votes > 0:
         config = VOTING_SYSTEM_CONFIGS[period.voting_system]
-        threshold = config.threshold_percent / 100 * total_national_votes
-        eligible = {
-            pid: v for pid, v in national_totals.items() if v >= threshold and pid is not None
-        }
+        if config.threshold_type == ThresholdType.NATURAL_SEAT_QUOTA:
+            # No percentage cutoff: a party qualifies once its ideal (pre-rounding)
+            # seat share reaches a full 1.0 seat. Below that, it gets nothing, and
+            # every seat is apportioned among the qualifying parties via Sainte-Laguë.
+            eligible = {
+                pid: v
+                for pid, v in national_totals.items()
+                if pid is not None and v / total_national_votes * period.seats >= 1.0
+            }
+        else:
+            threshold = config.threshold_percent / 100 * total_national_votes
+            eligible = {
+                pid: v for pid, v in national_totals.items() if v >= threshold and pid is not None
+            }
         if eligible:
             allocation = sainte_lague_apportion(eligible, period.seats)
             for party_id, seats in allocation.items():

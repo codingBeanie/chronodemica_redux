@@ -34,6 +34,7 @@ import { PeriodSelector } from "../components/PeriodSelector";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
 import { useTranslation } from "../i18n/I18nProvider";
+import { partyNameWithAbbreviation } from "../utils/partyDisplay";
 
 const emptyValues: TopicPeriodInput = { topic_id: 0, period_id: 0, importance: 10 };
 const NONE_VALUE = "__none__";
@@ -356,7 +357,7 @@ export function TopicPeriodsPage() {
                 <Table.Tbody>
                   {partiesInPeriod.map((party) => (
                     <Table.Tr key={party.id}>
-                      <Table.Td>{party.name}</Table.Td>
+                      <Table.Td>{partyNameWithAbbreviation(party)}</Table.Td>
                       <Table.Td>
                         <Select
                           data={[

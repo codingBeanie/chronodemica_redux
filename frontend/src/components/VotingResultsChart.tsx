@@ -57,7 +57,7 @@ export function VotingResultsChart({ parties }: VotingResultsChartProps) {
         {parties.map((party) => (
           <div key={party.id} style={{ width: columnWidth, flexShrink: 0, textAlign: "center", padding: "8px 0" }}>
             <Text fw={800} size="xl" c={themeConfig.diagram.text}>
-              {Math.round(party.percent)}%
+              {party.percent.toFixed(1)}%
             </Text>
           </div>
         ))}

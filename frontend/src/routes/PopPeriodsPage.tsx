@@ -9,7 +9,9 @@ import type { Pop, PopPeriod } from "../api/types";
 import { DiagramSurface } from "../components/DiagramSurface";
 import { PageHeader } from "../components/PageHeader";
 import { PeriodSelector } from "../components/PeriodSelector";
+import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
+import { compareSortValues, useSort } from "../hooks/useSort";
 import { annualGrowthPercent, formatGrowthPercent, yearsBetween } from "../utils/growth";
 import { useTranslation } from "../i18n/I18nProvider";
 import { themeConfig } from "../theme.config";
@@ -18,6 +20,8 @@ import { themeConfig } from "../theme.config";
 // each series by its own pop's color_bg — pop colors are domain data the user
 // picks (like Party.color_bg), not a generated categorical palette.
 const POPULATION_LINE_COLOR = "#2a78d6" as MantineColor;
+
+type SortKey = "name" | "share" | "turnout" | "population" | "votesCast";
 
 export function PopPeriodsPage() {
   const t = useTranslation();
@@ -30,6 +34,7 @@ export function PopPeriodsPage() {
   const [shareDrafts, setShareDrafts] = useState<Record<number, number>>({});
   const [turnoutDrafts, setTurnoutDrafts] = useState<Record<number, number>>({});
   const [totalPopulationDraft, setTotalPopulationDraft] = useState(0);
+  const { sortKey, sortDir, toggleSort } = useSort<SortKey>("name");
 
   useEffect(() => {
     popsApi.list().then((list) => setPops([...list].sort((a, b) => a.id - b.id)));
@@ -121,6 +126,24 @@ export function PopPeriodsPage() {
   const headcount = (share: number) => Math.round((totalPopulationDraft * share) / 100);
   const votesCast = (share: number, turnout: number) => Math.round(headcount(share) * turnout);
 
+  const getSortValue = (pop: Pop, key: SortKey): string | number => {
+    const share = shareDrafts[pop.id] ?? 0;
+    const turnout = turnoutDrafts[pop.id] ?? 0;
+    switch (key) {
+      case "name":
+        return pop.name;
+      case "share":
+        return share;
+      case "turnout":
+        return turnout;
+      case "population":
+        return headcount(share);
+      case "votesCast":
+        return votesCast(share, turnout);
+    }
+  };
+  const sortedPops = [...pops].sort((a, b) => compareSortValues(getSortValue(a, sortKey), getSortValue(b, sortKey), sortDir));
+
   // --- Charts: population growth (all periods), and composition over time
   // (one series per pop group, colored by that pop's own color_bg — same
   // domain-color-as-chart-color pattern already used for Party). ---
@@ -176,15 +199,49 @@ export function PopPeriodsPage() {
             <Table verticalSpacing="xs">
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{t.popPeriods.columnPop}</Table.Th>
-                  <Table.Th ta="right">{t.popPeriods.columnShare}</Table.Th>
-                  <Table.Th ta="right">{t.popPeriods.columnTurnout}</Table.Th>
-                  <Table.Th ta="right">{t.popPeriods.columnPopulation}</Table.Th>
-                  <Table.Th ta="right">{t.popPeriods.columnVotesCast}</Table.Th>
+                  <SortableTh
+                    label={t.popPeriods.columnPop}
+                    sortKey="name"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                  />
+                  <SortableTh
+                    label={t.popPeriods.columnShare}
+                    sortKey="share"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <SortableTh
+                    label={t.popPeriods.columnTurnout}
+                    sortKey="turnout"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <SortableTh
+                    label={t.popPeriods.columnPopulation}
+                    sortKey="population"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                    align="right"
+                  />
+                  <SortableTh
+                    label={t.popPeriods.columnVotesCast}
+                    sortKey="votesCast"
+                    activeKey={sortKey}
+                    direction={sortDir}
+                    onSort={toggleSort}
+                    align="right"
+                  />
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {pops.map((pop) => {
+                {sortedPops.map((pop) => {
                   const share = shareDrafts[pop.id] ?? 0;
                   const turnout = turnoutDrafts[pop.id] ?? 0;
                   return (

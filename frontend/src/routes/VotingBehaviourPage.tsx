@@ -9,7 +9,7 @@ import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
-import { partyDisplayName } from "../utils/partyDisplay";
+import { partyDisplayAbbreviation } from "../utils/partyDisplay";
 
 type SortKey = "topic" | "statement" | "approval" | number | null;
 
@@ -40,7 +40,7 @@ export function VotingBehaviourPage() {
     votingBehaviourApi.get(selectedPeriodId, selectedPopId).then(setBehaviour);
   }, [selectedPeriodId, selectedPopId]);
 
-  const partyName = (id: number | null) => partyDisplayName(id, parties);
+  const partyAbbreviation = (id: number | null) => partyDisplayAbbreviation(id, parties);
   const topicName = (id: number) => topics.find((tp) => tp.id === id)?.name ?? "-";
   const statementText = (id: number) => statements.find((s) => s.id === id)?.text ?? "-";
 
@@ -136,7 +136,7 @@ export function VotingBehaviourPage() {
                   {behaviour.party_ids.map((partyId) => (
                     <SortableTh
                       key={String(partyId)}
-                      label={partyName(partyId)}
+                      label={partyAbbreviation(partyId)}
                       sortKey={partyId}
                       activeKey={sortKey}
                       direction={sortDir}

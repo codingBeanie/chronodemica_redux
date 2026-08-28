@@ -6,9 +6,9 @@ class Settings(BaseSettings):
 
     app_name: str = "Chronodemica"
     database_url: str = "sqlite:///./data/chronodemica.db"
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: list[str] = ["http://localhost:5180"]
 
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "http://localhost:5180"
     session_secret_key: str = "dev-insecure-session-secret-change-me"
 
     oidc_issuer: str = ""

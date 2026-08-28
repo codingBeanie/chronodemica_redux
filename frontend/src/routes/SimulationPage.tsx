@@ -1,9 +1,10 @@
-import { Button, Group, Table, Text } from "@mantine/core";
+import { Button, Group, Table, Text, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useEffect, useState } from "react";
+import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
+import { Fragment, useEffect, useState } from "react";
 
-import { parliamentPeriodsApi, partiesApi, popPeriodsApi, simulationApi, votesApi } from "../api/resources";
-import type { ParliamentPeriod, Party, PopPeriod, Votes } from "../api/types";
+import { parliamentPeriodsApi, partiesApi, popPeriodsApi, popsApi, simulationApi, votesApi } from "../api/resources";
+import type { ParliamentPeriod, Party, Pop, PopPeriod, Votes } from "../api/types";
 import { confirmDialog } from "../components/ConfirmDialog";
 import { DiagramSurface } from "../components/DiagramSurface";
 import { InGovernmentIcon } from "../components/InGovernmentIcon";
@@ -14,7 +15,12 @@ import { VotingResultsChart } from "../components/VotingResultsChart";
 import { usePeriodContext } from "../context/PeriodContext";
 import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
-import { partyDisplayAbbreviation, partyDisplayColor, partyDisplayName } from "../utils/partyDisplay";
+import {
+  partyDisplayAbbreviation,
+  partyDisplayColor,
+  partyDisplayName,
+  partyDisplayNameWithAbbreviation,
+} from "../utils/partyDisplay";
 
 type SortKey = "party" | "votes" | "seats" | "in_government";
 
@@ -22,14 +28,17 @@ export function SimulationPage() {
   const t = useTranslation();
   const { periods, selectedPeriodId } = usePeriodContext();
   const [parties, setParties] = useState<Party[]>([]);
+  const [pops, setPops] = useState<Pop[]>([]);
   const [votes, setVotes] = useState<Votes[]>([]);
   const [parliamentPeriods, setParliamentPeriods] = useState<ParliamentPeriod[]>([]);
   const [popPeriods, setPopPeriods] = useState<PopPeriod[]>([]);
   const [previousVotes, setPreviousVotes] = useState<Votes[]>([]);
   const [running, setRunning] = useState(false);
+  const [expandedPartyKey, setExpandedPartyKey] = useState<string | null>(null);
 
   useEffect(() => {
     partiesApi.list().then(setParties);
+    popsApi.list().then(setPops);
   }, []);
 
   const refresh = () => {
@@ -62,7 +71,18 @@ export function SimulationPage() {
   const partyName = (id: number | null) => partyDisplayName(id, parties);
   const partyAbbreviation = (id: number | null) => partyDisplayAbbreviation(id, parties);
   const partyColor = (id: number | null): string => partyDisplayColor(id, parties);
+  const popName = (id: number) => pops.find((pop) => pop.id === id)?.name ?? "-";
   const hasResults = votes.length > 0 || parliamentPeriods.length > 0;
+
+  const toggleExpandedParty = (partyId: number | null) => {
+    const key = String(partyId);
+    setExpandedPartyKey((prev) => (prev === key ? null : key));
+  };
+  const votesByPopForParty = (partyId: number | null) =>
+    votes
+      .filter((vote) => vote.party_id === partyId)
+      .map((vote) => ({ popId: vote.pop_id, name: popName(vote.pop_id), votes: vote.votes }))
+      .sort((a, b) => b.votes - a.votes);
 
   const currentPeriod = periods.find((p) => p.id === selectedPeriodId);
   const totalVotesCast = popPeriods.reduce(
@@ -221,22 +241,68 @@ export function SimulationPage() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {sortedTablePartyIds.map((partyId) => (
-                      <Table.Tr key={String(partyId)}>
-                        <Table.Td>{partyName(partyId)}</Table.Td>
-                        <Table.Td ta="right">{(nationalTotals.get(partyId) ?? 0).toLocaleString()}</Table.Td>
-                        <Table.Td ta="right">
-                          {parliamentPeriods.find((p) => p.party_id === partyId)?.seats ?? 0}
-                        </Table.Td>
-                        <Table.Td>
-                          <InGovernmentIcon
-                            inGovernment={
-                              parliamentPeriods.find((p) => p.party_id === partyId)?.in_government ?? false
-                            }
-                          />
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
+                    {sortedTablePartyIds.map((partyId) => {
+                      const rowKey = String(partyId);
+                      const isExpanded = expandedPartyKey === rowKey;
+                      const popBreakdown = votesByPopForParty(partyId);
+                      return (
+                        <Fragment key={rowKey}>
+                          <Table.Tr>
+                            <Table.Td>
+                              <UnstyledButton
+                                onClick={() => toggleExpandedParty(partyId)}
+                                aria-expanded={isExpanded}
+                                style={{ display: "flex", width: "100%" }}
+                              >
+                                <Group gap={6} wrap="nowrap">
+                                  {isExpanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                                  <span>{partyDisplayNameWithAbbreviation(partyId, parties)}</span>
+                                </Group>
+                              </UnstyledButton>
+                            </Table.Td>
+                            <Table.Td ta="right">{(nationalTotals.get(partyId) ?? 0).toLocaleString()}</Table.Td>
+                            <Table.Td ta="right">
+                              {parliamentPeriods.find((p) => p.party_id === partyId)?.seats ?? 0}
+                            </Table.Td>
+                            <Table.Td>
+                              <InGovernmentIcon
+                                inGovernment={
+                                  parliamentPeriods.find((p) => p.party_id === partyId)?.in_government ?? false
+                                }
+                              />
+                            </Table.Td>
+                          </Table.Tr>
+                          {isExpanded && (
+                            <Table.Tr>
+                              <Table.Td colSpan={4} p={0}>
+                                {popBreakdown.length === 0 ? (
+                                  <Text size="sm" c="dimmed" p="sm">
+                                    {t.simulation.votesByPopEmpty}
+                                  </Text>
+                                ) : (
+                                  <Table withRowBorders={false}>
+                                    <Table.Thead>
+                                      <Table.Tr>
+                                        <Table.Th pl="xl">{t.popPeriods.columnPop}</Table.Th>
+                                        <Table.Th ta="right">{t.simulation.columnVotesByPop}</Table.Th>
+                                      </Table.Tr>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                      {popBreakdown.map((row) => (
+                                        <Table.Tr key={row.popId}>
+                                          <Table.Td pl="xl">{row.name}</Table.Td>
+                                          <Table.Td ta="right">{row.votes.toLocaleString()}</Table.Td>
+                                        </Table.Tr>
+                                      ))}
+                                    </Table.Tbody>
+                                  </Table>
+                                )}
+                              </Table.Td>
+                            </Table.Tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </Table.Tbody>
                 </Table>
               </div>

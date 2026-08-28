@@ -36,6 +36,7 @@ export function ParliamentPeriodsPage() {
   useEffect(refresh, [selectedPeriodId]);
 
   const partyName = (id: number) => parties.find((p) => p.id === id)?.name ?? "-";
+  const partyAbbreviation = (id: number) => parties.find((p) => p.id === id)?.abbreviation ?? "-";
   const partyColor = (id: number) => parties.find((p) => p.id === id)?.color_bg ?? "#adb5bd";
   const partySeatOrientation = (id: number) => parties.find((p) => p.id === id)?.seat_orientation ?? 50;
 
@@ -59,6 +60,7 @@ export function ParliamentPeriodsPage() {
           parties={entries.map((entry) => ({
             id: entry.party_id,
             name: partyName(entry.party_id),
+            abbreviation: partyAbbreviation(entry.party_id),
             color: partyColor(entry.party_id),
             seats: entry.seats,
             seatOrientation: partySeatOrientation(entry.party_id),

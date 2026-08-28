@@ -20,6 +20,17 @@ export function partyDisplayAbbreviation(partyId: number | null, parties: Party[
   return parties.find((p) => p.id === partyId)?.abbreviation ?? "-";
 }
 
+/** "(ABBR) Full Name" — the short name in brackets ahead of the long name. */
+export function partyNameWithAbbreviation(party: Party): string {
+  return `(${party.abbreviation}) ${party.name}`;
+}
+
+export function partyDisplayNameWithAbbreviation(partyId: number | null, parties: Party[]): string {
+  if (partyId === null) return "Misc";
+  const party = parties.find((p) => p.id === partyId);
+  return party ? partyNameWithAbbreviation(party) : "-";
+}
+
 /** Whether `party` already existed and hadn't yet dissolved as of `votingDate`. */
 export function isPartyActiveAt(party: Party, votingDate: string): boolean {
   const year = new Date(votingDate).getFullYear();
