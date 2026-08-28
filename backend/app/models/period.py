@@ -11,6 +11,7 @@ class PeriodBase(SQLModel):
     end_date: date
     voting_system: VotingSystem
     seats: int = Field(ge=0)
+    total_population: int = Field(ge=0)
 
 
 class Period(PeriodBase, table=True):
@@ -28,6 +29,7 @@ class PeriodUpdate(SQLModel):
     end_date: date | None = None
     voting_system: VotingSystem | None = None
     seats: int | None = None
+    total_population: int | None = None
 
 
 class PeriodRead(PeriodBase):

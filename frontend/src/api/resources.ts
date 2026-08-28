@@ -110,8 +110,21 @@ export const popsApi = createResource<Pop, PopInput>("/api/pops");
 export const topicsApi = createResource<Topic, TopicInput>("/api/topics");
 export const statementsApi = createResource<Statement, StatementInput>("/api/statements");
 export const periodsApi = createResource<Period, PeriodInput>("/api/periods");
-export const partyPeriodsApi = createResource<PartyPeriod, PartyPeriodInput>("/api/party-periods");
-export const popPeriodsApi = createResource<PopPeriod, PopPeriodInput>("/api/pop-periods");
+// No create/remove — every period always has a PartyPeriod row for each party
+// that's founded and not yet dissolved as of that period (auto-created
+// alongside the party/period itself).
+export const partyPeriodsApi = {
+  ...createReadOnlyResource<PartyPeriod>("/api/party-periods"),
+  update: (id: number, input: Partial<PartyPeriodInput>) =>
+    apiFetch<PartyPeriod>(`/api/party-periods/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+};
+// No create/remove — every period always has a PopPeriod row for each pop
+// already (auto-created alongside the period itself).
+export const popPeriodsApi = {
+  ...createReadOnlyResource<PopPeriod>("/api/pop-periods"),
+  update: (id: number, input: Partial<PopPeriodInput>) =>
+    apiFetch<PopPeriod>(`/api/pop-periods/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+};
 export const topicPeriodsApi = createResource<TopicPeriod, TopicPeriodInput>("/api/topic-periods");
 export const partyStatementsApi = createResource<PartyStatement, PartyStatementInput>(
   "/api/party-statements",

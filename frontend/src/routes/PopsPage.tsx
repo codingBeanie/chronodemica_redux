@@ -1,4 +1,4 @@
-import { Button, Modal, Textarea, TextInput } from "@mantine/core";
+import { Button, ColorInput, ColorSwatch, Group, Modal, Text, Textarea, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -11,13 +11,17 @@ import { DataTable, type DataTableColumn } from "../components/DataTable";
 import { PageHeader } from "../components/PageHeader";
 import { useCrud } from "../hooks/useCrud";
 import { useTranslation } from "../i18n/I18nProvider";
+import { themeConfig } from "../theme.config";
+import { contrastRatio, MIN_AA_CONTRAST } from "../utils/colorContrast";
 
 const emptyValues: PopInput = {
   name: "",
   description: "",
+  color_bg: themeConfig.brand,
+  color_text: themeConfig.surface,
 };
 
-type SortKey = "name" | "description";
+type SortKey = "name";
 
 export function PopsPage() {
   const t = useTranslation();
@@ -37,6 +41,8 @@ export function PopsPage() {
     form.setValues({
       name: pop.name,
       description: pop.description,
+      color_bg: pop.color_bg,
+      color_text: pop.color_text,
     });
     open();
   };
@@ -65,9 +71,26 @@ export function PopsPage() {
     });
   };
 
-  const columns: DataTableColumn<Pop, SortKey | "actions">[] = [
-    { key: "name", label: t.pops.columnName, render: (pop) => pop.name },
-    { key: "description", label: t.pops.columnDescription, render: (pop) => pop.description },
+  const colorRatio = contrastRatio(form.values.color_bg, form.values.color_text);
+  const lowContrast = colorRatio < MIN_AA_CONTRAST;
+
+  const columns: DataTableColumn<Pop, SortKey | "description" | "actions">[] = [
+    {
+      key: "name",
+      label: t.pops.columnName,
+      render: (pop) => (
+        <Group gap="xs" wrap="nowrap">
+          <ColorSwatch color={pop.color_bg} size={16} />
+          {pop.name}
+        </Group>
+      ),
+    },
+    {
+      key: "description",
+      label: t.pops.columnDescription,
+      sortable: false,
+      render: (pop) => pop.description,
+    },
     {
       key: "actions",
       label: null,
@@ -96,7 +119,7 @@ export function PopsPage() {
         columns={columns}
         items={items}
         getRowKey={(pop) => pop.id}
-        getSortValue={(pop, key) => (key === "actions" ? "" : pop[key])}
+        getSortValue={(pop, key) => (key === "name" ? pop.name : "")}
         initialSortKey="name"
         loading={loading}
         error={error}
@@ -110,6 +133,13 @@ export function PopsPage() {
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <TextInput label={t.pops.fieldName} required {...form.getInputProps("name")} />
           <Textarea label={t.pops.fieldDescription} mt="sm" {...form.getInputProps("description")} />
+          <ColorInput label={t.pops.fieldColorBg} mt="sm" {...form.getInputProps("color_bg")} />
+          <ColorInput label={t.pops.fieldColorText} mt="sm" {...form.getInputProps("color_text")} />
+          {lowContrast && (
+            <Text size="xs" c="orange" mt={4}>
+              {t.pops.lowContrastWarning(colorRatio)}
+            </Text>
+          )}
           <Button type="submit" mt="md" fullWidth>
             {t.common.save}
           </Button>

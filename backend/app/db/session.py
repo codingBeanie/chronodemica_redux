@@ -3,7 +3,7 @@ from pathlib import Path
 
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import make_url
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import settings
 
@@ -151,6 +151,73 @@ def _migrate_pop_abbreviation_to_description() -> None:
         conn.execute(text("ALTER TABLE pop DROP COLUMN abbreviation"))
 
 
+def _migrate_popperiod_to_share() -> None:
+    """population/eligibility -> Period.total_population + PopPeriod.share.
+
+    `turnout` is untouched — it stays a per-pop-period field. Backfills
+    total_population per period as the sum of that period's existing
+    popperiod.population values, then converts each row's population into a
+    share of that total (rounded, via SQLite integer math — minor drift away
+    from summing to exactly 100 is expected and fixable afterward through the
+    same live sum indicator already used for PopStatement approvals). Existing
+    worlds not yet on the fixed 9-segment model keep whatever Pops they have —
+    this migration only touches the PopPeriod/Period schema, not which Pops
+    exist (that's a per-world opt-in via the "reset population segments"
+    action, not something to force silently).
+    """
+    db_inspector = inspect(engine)
+    if not db_inspector.has_table("popperiod"):
+        return
+
+    popperiod_columns = {col["name"] for col in db_inspector.get_columns("popperiod")}
+    if "population" not in popperiod_columns:
+        return
+
+    period_columns = {col["name"] for col in db_inspector.get_columns("period")}
+
+    with engine.begin() as conn:
+        if "total_population" not in period_columns:
+            conn.execute(text("ALTER TABLE period ADD COLUMN total_population INTEGER NOT NULL DEFAULT 0"))
+        conn.execute(
+            text(
+                "UPDATE period SET total_population = COALESCE("
+                "(SELECT SUM(population) FROM popperiod WHERE popperiod.period_id = period.id), 0)"
+            )
+        )
+
+        if "share" not in popperiod_columns:
+            conn.execute(text("ALTER TABLE popperiod ADD COLUMN share INTEGER NOT NULL DEFAULT 0"))
+        conn.execute(
+            text(
+                "UPDATE popperiod SET share = CAST(ROUND(100.0 * population / "
+                "(SELECT total_population FROM period WHERE period.id = popperiod.period_id)"
+                ") AS INTEGER) "
+                "WHERE (SELECT total_population FROM period WHERE period.id = popperiod.period_id) > 0"
+            )
+        )
+
+        conn.execute(text("ALTER TABLE popperiod DROP COLUMN population"))
+        conn.execute(text("ALTER TABLE popperiod DROP COLUMN eligibility"))
+
+
+def _sync_party_periods_for_all_worlds() -> None:
+    """Backfills PartyPeriod rows for every founded-and-not-yet-dissolved party
+    across every existing world. Runs on every startup — additive and
+    idempotent (see sync_party_periods), so it's cheap to always run, and it
+    self-heals databases created before parties auto-joined every eligible
+    period (including one restored via world import while the server wasn't
+    running).
+    """
+    from app.models.world import World
+    from app.services.party_periods import sync_party_periods
+
+    with Session(engine) as session:
+        world_ids = session.exec(select(World.id)).all()
+        for world_id in world_ids:
+            sync_party_periods(session, world_id)
+        session.commit()
+
+
 def init_db() -> None:
     db_path = make_url(settings.database_url).database
     if db_path and db_path != ":memory:":
@@ -159,8 +226,10 @@ def init_db() -> None:
     _rename_votes_table_if_party_id_not_null()
     _migrate_user_table_to_oidc()
     _migrate_pop_abbreviation_to_description()
+    _migrate_popperiod_to_share()
     SQLModel.metadata.create_all(engine)
     _finish_votes_migration_and_drop_misc_party()
+    _sync_party_periods_for_all_worlds()
 
 
 def get_session() -> Generator[Session, None, None]:

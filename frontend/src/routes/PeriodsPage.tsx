@@ -19,9 +19,10 @@ const emptyValues: PeriodInput = {
   end_date: "",
   voting_system: VOTING_SYSTEMS[0].value,
   seats: 100,
+  total_population: 0,
 };
 
-type SortKey = "voting_date" | "start_date" | "end_date" | "voting_system" | "seats";
+type SortKey = "voting_date" | "start_date" | "end_date" | "voting_system" | "seats" | "total_population";
 
 export function PeriodsPage() {
   const t = useTranslation();
@@ -44,6 +45,7 @@ export function PeriodsPage() {
       end_date: period.end_date,
       voting_system: period.voting_system,
       seats: period.seats,
+      total_population: period.total_population,
     });
     open();
   };
@@ -86,6 +88,12 @@ export function PeriodsPage() {
       render: (period) => votingSystemLabel(period.voting_system),
     },
     { key: "seats", label: t.periods.columnSeats, align: "right", render: (period) => period.seats },
+    {
+      key: "total_population",
+      label: t.periods.columnTotalPopulation,
+      align: "right",
+      render: (period) => period.total_population.toLocaleString(),
+    },
     {
       key: "actions",
       label: null,
@@ -160,6 +168,13 @@ export function PeriodsPage() {
             min={1}
             mt="sm"
             {...form.getInputProps("seats")}
+          />
+          <NumberInput
+            label={t.periods.fieldTotalPopulation}
+            required
+            min={0}
+            mt="sm"
+            {...form.getInputProps("total_population")}
           />
           <Button type="submit" mt="md" fullWidth>
             {t.common.save}

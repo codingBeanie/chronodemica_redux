@@ -9,6 +9,7 @@ from app.models.party_period import PartyPeriod
 from app.models.party_statement import PartyStatement
 from app.models.votes import Votes
 from app.models.world import World
+from app.services.party_periods import sync_party_periods
 
 router = APIRouter(prefix="/api/parties", tags=["parties"])
 
@@ -29,6 +30,8 @@ def create_party(
 ):
     party = Party.model_validate(party_in, update={"world_id": world.id})
     session.add(party)
+    session.flush()
+    sync_party_periods(session, world.id)
     session.commit()
     session.refresh(party)
     return party
@@ -50,6 +53,8 @@ def update_party(party_id: int, party_in: PartyUpdate, session: Session = Depend
     for key, value in party_in.model_dump(exclude_unset=True).items():
         setattr(party, key, value)
     session.add(party)
+    session.flush()
+    sync_party_periods(session, party.world_id)
     session.commit()
     session.refresh(party)
     return party

@@ -156,7 +156,7 @@ def run_simulation(session: Session, period: Period) -> None:
     national_totals: dict[int | None, int] = defaultdict(int)
 
     for pop_period in pop_periods:
-        votes_cast = pop_period.population * pop_period.eligibility * pop_period.turnout
+        votes_cast = period.total_population * pop_period.share / 100 * pop_period.turnout
 
         statement_points = compute_statement_points_for_pop(
             context, pop_period.pop_id, approval_by_pop_statement

@@ -58,32 +58,121 @@ PARTIES = [
     },
 ]
 
+# A Bourdieu-style volume x capital-composition grid of nine illustrative
+# population groups — a reasonable, richly-described starting point, not a
+# fixed/locked set. Shares follow the user-supplied working table, bumped by one
+# point on S5 since the original table summed to 99%, not 100%.
 POPS = [
     {
-        "key": "URB",
-        "name": "Urban Progressives",
-        "description": "Younger, urban voters focused on social progress and public services.",
-        "population": 250_000,
-        "turnout": 0.65,
-        "eligibility": 0.82,
-    },
-    {
-        "key": "SUB",
-        "name": "Suburban Families",
-        "description": "Middle-class suburban households balancing work, family, and moderate politics.",
-        "population": 400_000,
-        "turnout": 0.70,
-        "eligibility": 0.85,
-    },
-    {
-        "key": "RUR",
-        "name": "Rural Traditionalists",
-        "description": "Rural communities favoring tradition, agriculture, and local autonomy.",
-        "population": 150_000,
+        "key": "S1",
+        "name": "S1 Intellectuals",
+        "description": (
+            "Archetype: The Bohemian. Volume: high (+). Composition: culturally "
+            "dominant (C+). Authority: very low (--). Voting lean: left-libertarian."
+        ),
+        "color_bg": "#7048e8",
+        "color_text": "#ffffff",
+        "share": 2,
         "turnout": 0.75,
-        "eligibility": 0.80,
+    },
+    {
+        "key": "S2",
+        "name": "S2 Professions",
+        "description": (
+            "Archetype: The Teacher. Volume: high (+). Composition: balanced (±). "
+            "Authority: low (-). Voting lean: social liberal."
+        ),
+        "color_bg": "#4263eb",
+        "color_text": "#ffffff",
+        "share": 8,
+        "turnout": 0.80,
+    },
+    {
+        "key": "S3",
+        "name": "S3 Business bourgeoisie",
+        "description": (
+            "Archetype: The Industrialist. Volume: high (+). Composition: economically "
+            "dominant (E+). Authority: very high (++). Voting lean: conservative-liberal."
+        ),
+        "color_bg": "#1c7ed6",
+        "color_text": "#ffffff",
+        "share": 7,
+        "turnout": 0.85,
+    },
+    {
+        "key": "S4",
+        "name": "S4 Cultural mediators",
+        "description": (
+            "Volume: middle (0). Composition: culturally dominant (C+). Authority: low (-). "
+            "Voting lean: progressive, volatile."
+        ),
+        "color_bg": "#0ca678",
+        "color_text": "#ffffff",
+        "share": 12,
+        "turnout": 0.60,
+    },
+    {
+        "key": "S5",
+        "name": "S5 Technical middle",
+        "description": (
+            "Archetype: The Skilled Worker. Volume: middle (0). Composition: balanced (±). "
+            "Authority: low (-). Voting lean: social democratic."
+        ),
+        "color_bg": "#2b8a3e",
+        "color_text": "#ffffff",
+        "share": 36,
+        "turnout": 0.70,
+    },
+    {
+        "key": "S6",
+        "name": "S6 Old middle class",
+        "description": (
+            "Archetype: The Civil Servant. Volume: middle (0). Composition: economically "
+            "dominant (E+). Authority: high (+). Voting lean: conservative."
+        ),
+        "color_bg": "#e8a800",
+        "color_text": "#000000",
+        "share": 23,
+        "turnout": 0.78,
+    },
+    {
+        "key": "S7",
+        "name": "S7 Credentialed precariat",
+        "description": (
+            "Archetype: The Dropout. Volume: low (-). Composition: culturally dominant (C+). "
+            "Authority: very low (--). Voting lean: left protest."
+        ),
+        "color_bg": "#f76707",
+        "color_text": "#ffffff",
+        "share": 2,
+        "turnout": 0.55,
+    },
+    {
+        "key": "S8",
+        "name": "S8 Skilled working class",
+        "description": (
+            "Archetype: The Left-Behind. Volume: low (-). Composition: slightly economic (-). "
+            "Authority: neutral (0). Voting lean: abstain / left."
+        ),
+        "color_bg": "#e64980",
+        "color_text": "#ffffff",
+        "share": 6,
+        "turnout": 0.58,
+    },
+    {
+        "key": "S9",
+        "name": "S9 Proletariat",
+        "description": (
+            "Archetype: The Night Watchman. Volume: low (-). Composition: economically "
+            "dominant (E-). Authority: high (+). Voting lean: right protest."
+        ),
+        "color_bg": "#c92a2a",
+        "color_text": "#ffffff",
+        "share": 4,
+        "turnout": 0.50,
     },
 ]
+DEMO_TOTAL_POPULATION = 1_000_000
 
 TOPICS = [
     {
@@ -103,9 +192,15 @@ TOPICS = [
             "NC": "Lower taxes and deregulation",
         },
         "pop_approvals": {
-            "URB": [15, 35, 50],
-            "SUB": [30, 40, 30],
-            "RUR": [45, 35, 20],
+            "S1": [10, 30, 60],
+            "S2": [15, 40, 45],
+            "S3": [70, 15, 15],
+            "S4": [10, 35, 55],
+            "S5": [15, 55, 30],
+            "S6": [45, 40, 15],
+            "S7": [10, 60, 30],
+            "S8": [20, 55, 25],
+            "S9": [50, 30, 20],
         },
     },
     {
@@ -125,9 +220,15 @@ TOPICS = [
             "NC": "Prioritize energy independence over emissions targets",
         },
         "pop_approvals": {
-            "URB": [55, 35, 10],
-            "SUB": [25, 50, 25],
-            "RUR": [10, 35, 55],
+            "S1": [70, 25, 5],
+            "S2": [55, 35, 10],
+            "S3": [15, 55, 30],
+            "S4": [65, 30, 5],
+            "S5": [35, 50, 15],
+            "S6": [20, 55, 25],
+            "S7": [50, 35, 15],
+            "S8": [25, 45, 30],
+            "S9": [10, 30, 60],
         },
     },
     {
@@ -147,9 +248,15 @@ TOPICS = [
             "NC": "Strict border enforcement",
         },
         "pop_approvals": {
-            "URB": [50, 40, 10],
-            "SUB": [20, 55, 25],
-            "RUR": [10, 30, 60],
+            "S1": [60, 35, 5],
+            "S2": [40, 50, 10],
+            "S3": [20, 50, 30],
+            "S4": [55, 35, 10],
+            "S5": [25, 55, 20],
+            "S6": [15, 50, 35],
+            "S7": [45, 40, 15],
+            "S8": [20, 45, 35],
+            "S9": [10, 30, 60],
         },
     },
 ]
@@ -183,6 +290,8 @@ def seed_demo_data(session: Session, world: World) -> None:
             world_id=world.id,
             name=data["name"],
             description=data["description"],
+            color_bg=data["color_bg"],
+            color_text=data["color_text"],
         )
         for data in POPS
     }
@@ -196,6 +305,7 @@ def seed_demo_data(session: Session, world: World) -> None:
         end_date=today.replace(year=today.year + 4),
         voting_system=VotingSystem.PROPORTIONAL_REPRESENTATION,
         seats=100,
+        total_population=DEMO_TOTAL_POPULATION,
     )
     session.add(period)
     session.flush()
@@ -213,9 +323,8 @@ def seed_demo_data(session: Session, world: World) -> None:
             PopPeriod(
                 pop_id=pops[data["key"]].id,
                 period_id=period.id,
-                population=data["population"],
+                share=data["share"],
                 turnout=data["turnout"],
-                eligibility=data["eligibility"],
             )
         )
 

@@ -4,6 +4,8 @@ from sqlmodel import Field, SQLModel
 class PopBase(SQLModel):
     name: str
     description: str
+    color_bg: str
+    color_text: str
 
 
 class Pop(PopBase, table=True):
@@ -18,6 +20,8 @@ class PopCreate(PopBase):
 class PopUpdate(SQLModel):
     name: str | None = None
     description: str | None = None
+    color_bg: str | None = None
+    color_text: str | None = None
 
 
 class PopRead(PopBase):

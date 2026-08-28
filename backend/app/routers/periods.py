@@ -4,7 +4,10 @@ from sqlmodel import Session, select
 from app.db.session import get_session
 from app.dependencies import get_current_world
 from app.models.period import Period, PeriodCreate, PeriodRead, PeriodUpdate
+from app.models.pop import Pop
+from app.models.pop_period import PopPeriod
 from app.models.world import World
+from app.services.party_periods import sync_party_periods
 
 router = APIRouter(prefix="/api/periods", tags=["periods"])
 
@@ -25,6 +28,19 @@ def create_period(
 ):
     period = Period.model_validate(period_in, update={"world_id": world.id})
     session.add(period)
+    session.flush()
+
+    # Every pop is always represented in every period — a new period gets a
+    # PopPeriod row for each existing pop up front (share=0, to be filled in),
+    # so there's no "add a pop to this period" step for the user to do.
+    pops = session.exec(select(Pop).where(Pop.world_id == world.id)).all()
+    for pop in pops:
+        session.add(PopPeriod(pop_id=pop.id, period_id=period.id, share=0, turnout=0.5))
+
+    # Same idea for parties, but scoped by founded/dissolved eligibility rather
+    # than unconditionally — see sync_party_periods.
+    sync_party_periods(session, world.id)
+
     session.commit()
     session.refresh(period)
     return period

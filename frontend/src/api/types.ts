@@ -33,6 +33,8 @@ export interface Pop {
   world_id: number;
   name: string;
   description: string;
+  color_bg: string;
+  color_text: string;
 }
 export type PopInput = Omit<Pop, "id" | "world_id">;
 
@@ -59,6 +61,7 @@ export interface Period {
   end_date: string;
   voting_system: VotingSystem;
   seats: number;
+  total_population: number;
 }
 export type PeriodInput = Omit<Period, "id" | "world_id">;
 
@@ -107,9 +110,8 @@ export interface PopPeriod {
   id: number;
   pop_id: number;
   period_id: number;
-  population: number;
+  share: number;
   turnout: number;
-  eligibility: number;
 }
 export type PopPeriodInput = Omit<PopPeriod, "id">;
 

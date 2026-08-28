@@ -2,9 +2,8 @@ from sqlmodel import Field, SQLModel
 
 
 class PopPeriodBase(SQLModel):
-    population: int = Field(ge=0)
+    share: int = Field(ge=0, le=100)
     turnout: float = Field(ge=0, le=1)
-    eligibility: float = Field(ge=0, le=1)
 
 
 class PopPeriod(PopPeriodBase, table=True):
@@ -19,9 +18,8 @@ class PopPeriodCreate(PopPeriodBase):
 
 
 class PopPeriodUpdate(SQLModel):
-    population: int | None = Field(default=None, ge=0)
+    share: int | None = Field(default=None, ge=0, le=100)
     turnout: float | None = Field(default=None, ge=0, le=1)
-    eligibility: float | None = Field(default=None, ge=0, le=1)
 
 
 class PopPeriodRead(PopPeriodBase):

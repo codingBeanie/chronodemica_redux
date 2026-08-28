@@ -16,8 +16,10 @@ def list_pop_periods(
     period_id: int | None = Query(default=None),
     pop_id: int | None = Query(default=None),
     session: Session = Depends(get_session),
+    world: World = Depends(get_current_world),
 ):
-    query = select(PopPeriod)
+    world_period_ids = select(Period.id).where(Period.world_id == world.id)
+    query = select(PopPeriod).where(PopPeriod.period_id.in_(world_period_ids))
     if period_id is not None:
         query = query.where(PopPeriod.period_id == period_id)
     if pop_id is not None:

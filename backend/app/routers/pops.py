@@ -3,7 +3,10 @@ from sqlmodel import Session, select
 
 from app.db.session import get_session
 from app.dependencies import get_current_world
+from app.models.period import Period
 from app.models.pop import Pop, PopCreate, PopRead, PopUpdate
+from app.models.pop_period import PopPeriod
+from app.models.pop_statement import PopStatement
 from app.models.world import World
 
 router = APIRouter(prefix="/api/pops", tags=["pops"])
@@ -25,6 +28,15 @@ def create_pop(
 ):
     pop = Pop.model_validate(pop_in, update={"world_id": world.id})
     session.add(pop)
+    session.flush()
+
+    # Every pop is always represented in every period — no manual "add to period"
+    # step, so a newly created pop immediately gets a row (share=0) for each of
+    # this world's existing periods.
+    periods = session.exec(select(Period).where(Period.world_id == world.id)).all()
+    for period in periods:
+        session.add(PopPeriod(pop_id=pop.id, period_id=period.id, share=0, turnout=0.5))
+
     session.commit()
     session.refresh(pop)
     return pop
@@ -56,5 +68,8 @@ def delete_pop(pop_id: int, session: Session = Depends(get_session)):
     pop = session.get(Pop, pop_id)
     if pop is None:
         raise HTTPException(status_code=404, detail="Pop not found")
+    for dependent_model in (PopPeriod, PopStatement):
+        for row in session.exec(select(dependent_model).where(dependent_model.pop_id == pop_id)).all():
+            session.delete(row)
     session.delete(pop)
     session.commit()

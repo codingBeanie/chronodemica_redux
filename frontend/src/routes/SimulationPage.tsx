@@ -64,12 +64,13 @@ export function SimulationPage() {
   const partyColor = (id: number | null): string => partyDisplayColor(id, parties);
   const hasResults = votes.length > 0 || parliamentPeriods.length > 0;
 
-  const totalEligibleVoters = popPeriods.reduce((sum, pp) => sum + pp.population * pp.eligibility, 0);
+  const currentPeriod = periods.find((p) => p.id === selectedPeriodId);
   const totalVotesCast = popPeriods.reduce(
-    (sum, pp) => sum + pp.population * pp.eligibility * pp.turnout,
+    (sum, pp) => sum + ((currentPeriod?.total_population ?? 0) * pp.share * pp.turnout) / 100,
     0,
   );
-  const turnoutRate = totalEligibleVoters > 0 ? (totalVotesCast / totalEligibleVoters) * 100 : null;
+  const turnoutRate =
+    currentPeriod && currentPeriod.total_population > 0 ? (totalVotesCast / currentPeriod.total_population) * 100 : null;
 
   const nationalTotals = new Map<number | null, number>();
   for (const vote of votes) {

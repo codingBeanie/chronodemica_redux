@@ -73,7 +73,8 @@ export function TopicPeriodsPage() {
     topicsApi.list().then(setTopics);
   }, []);
 
-  // Only parties/pops already assigned to this period (via Party Period / Pop Period)
+  // Only parties/pops that already have a PartyPeriod/PopPeriod row for this
+  // period (every pop always does; every founded-and-not-dissolved party does)
   // can meaningfully approve statements here.
   useEffect(() => {
     if (!selectedPeriodId) {
