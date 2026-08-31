@@ -15,3 +15,19 @@ export function formatGrowthPercent(rate: number | null): string {
   const sign = rate >= 0 ? "+" : "";
   return `${sign}${rate.toFixed(1)}%/yr`;
 }
+
+/** "+3pp" / "-2pp" / "±0pp" — percentage-point difference between two 0-100 values. */
+export function formatPercentagePointDelta(current: number, previous: number): string {
+  const diff = Math.round((current - previous) * 10) / 10;
+  if (diff === 0) return "±0pp";
+  const sign = diff > 0 ? "+" : "";
+  return `${sign}${diff}pp`;
+}
+
+/** "+1,200" / "-450" / "±0" — nominal (absolute) difference between two counts. */
+export function formatNominalDelta(current: number, previous: number): string {
+  const diff = current - previous;
+  if (diff === 0) return "±0";
+  const sign = diff > 0 ? "+" : "";
+  return `${sign}${diff.toLocaleString()}`;
+}

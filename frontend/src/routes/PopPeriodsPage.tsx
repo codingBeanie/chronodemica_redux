@@ -1,4 +1,4 @@
-import { AreaChart } from "@mantine/charts";
+import { BarChart } from "@mantine/charts";
 import { Button, ColorSwatch, Group, NumberInput, Table, Text } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -12,7 +12,13 @@ import { PeriodSelector } from "../components/PeriodSelector";
 import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { compareSortValues, useSort } from "../hooks/useSort";
-import { annualGrowthPercent, formatGrowthPercent, yearsBetween } from "../utils/growth";
+import {
+  annualGrowthPercent,
+  formatGrowthPercent,
+  formatNominalDelta,
+  formatPercentagePointDelta,
+  yearsBetween,
+} from "../utils/growth";
 import { useTranslation } from "../i18n/I18nProvider";
 import { themeConfig } from "../theme.config";
 
@@ -125,6 +131,15 @@ export function PopPeriodsPage() {
 
   const headcount = (share: number) => Math.round((totalPopulationDraft * share) / 100);
   const votesCast = (share: number, turnout: number) => Math.round(headcount(share) * turnout);
+
+  // Previous-period comparison, per pop — "sofern vorhanden": a pop with no
+  // matching row in the previous period (e.g. it didn't exist yet) gets none
+  // of these, rather than a misleading delta against 0.
+  const previousItemFor = (popId: number) => previousItems.find((pp) => pp.pop_id === popId);
+  const previousHeadcount = (previousShare: number) =>
+    previousPeriod ? Math.round((previousPeriod.total_population * previousShare) / 100) : 0;
+  const previousVotesCast = (previousShare: number, previousTurnout: number) =>
+    Math.round(previousHeadcount(previousShare) * previousTurnout);
 
   const getSortValue = (pop: Pop, key: SortKey): string | number => {
     const share = shareDrafts[pop.id] ?? 0;
@@ -244,40 +259,67 @@ export function PopPeriodsPage() {
                 {sortedPops.map((pop) => {
                   const share = shareDrafts[pop.id] ?? 0;
                   const turnout = turnoutDrafts[pop.id] ?? 0;
+                  const prevItem = previousItemFor(pop.id);
                   return (
                     <Table.Tr key={pop.id}>
                       <Table.Td>{pop.name}</Table.Td>
                       <Table.Td>
-                        <NumberInput
-                          value={share}
-                          onChange={(value) =>
-                            setShareDrafts((prev) => ({ ...prev, [pop.id]: typeof value === "number" ? value : 0 }))
-                          }
-                          min={0}
-                          max={100}
-                          w={100}
-                          ml="auto"
-                        />
+                        <Group gap={4} justify="flex-end" wrap="nowrap">
+                          <NumberInput
+                            value={share}
+                            onChange={(value) =>
+                              setShareDrafts((prev) => ({ ...prev, [pop.id]: typeof value === "number" ? value : 0 }))
+                            }
+                            min={0}
+                            max={100}
+                            w={100}
+                          />
+                          {prevItem && (
+                            <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>
+                              {formatPercentagePointDelta(share, prevItem.share)}
+                            </Text>
+                          )}
+                        </Group>
                       </Table.Td>
                       <Table.Td>
-                        <NumberInput
-                          value={turnout}
-                          onChange={(value) =>
-                            setTurnoutDrafts((prev) => ({
-                              ...prev,
-                              [pop.id]: typeof value === "number" ? value : 0,
-                            }))
-                          }
-                          min={0}
-                          max={1}
-                          step={0.01}
-                          decimalScale={2}
-                          w={100}
-                          ml="auto"
-                        />
+                        <Group gap={4} justify="flex-end" wrap="nowrap">
+                          <NumberInput
+                            value={turnout}
+                            onChange={(value) =>
+                              setTurnoutDrafts((prev) => ({
+                                ...prev,
+                                [pop.id]: typeof value === "number" ? value : 0,
+                              }))
+                            }
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            decimalScale={2}
+                            w={100}
+                          />
+                          {prevItem && (
+                            <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>
+                              {formatPercentagePointDelta(turnout * 100, prevItem.turnout * 100)}
+                            </Text>
+                          )}
+                        </Group>
                       </Table.Td>
-                      <Table.Td ta="right">{headcount(share).toLocaleString()}</Table.Td>
-                      <Table.Td ta="right">{votesCast(share, turnout).toLocaleString()}</Table.Td>
+                      <Table.Td ta="right">
+                        {headcount(share).toLocaleString()}
+                        {prevItem && (
+                          <Text span size="xs" c="dimmed" ml={4}>
+                            ({formatNominalDelta(headcount(share), previousHeadcount(prevItem.share))})
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        {votesCast(share, turnout).toLocaleString()}
+                        {prevItem && (
+                          <Text span size="xs" c="dimmed" ml={4}>
+                            {`(${formatNominalDelta(votesCast(share, turnout), previousVotesCast(prevItem.share, prevItem.turnout))})`}
+                          </Text>
+                        )}
+                      </Table.Td>
                     </Table.Tr>
                   );
                 })}
@@ -308,13 +350,12 @@ export function PopPeriodsPage() {
             {t.popPeriods.populationGrowthChartTitle}
           </Text>
           <DiagramSurface mb="xl">
-            <AreaChart
+            <BarChart
               h={220}
               data={populationData}
               dataKey="year"
               series={[{ name: "population", color: POPULATION_LINE_COLOR }]}
               withLegend={false}
-              curveType="linear"
               valueFormatter={(value) => value.toLocaleString()}
             />
           </DiagramSurface>
@@ -323,14 +364,13 @@ export function PopPeriodsPage() {
             {t.popPeriods.compositionChartTitle}
           </Text>
           <DiagramSurface mb="xl">
-            <AreaChart
+            <BarChart
               h={280}
               data={compositionData}
               dataKey="year"
               series={compositionSeries}
               type="percent"
               withLegend={false}
-              curveType="linear"
               valueFormatter={(value) => `${value}%`}
             />
             <Group gap="md" mt="sm" justify="center">
