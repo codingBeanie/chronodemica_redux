@@ -41,7 +41,12 @@ export function CoalitionsPage() {
 
   const party = (id: number) => parties.find((p) => p.id === id);
   const partySeats = (id: number) => entries.find((e) => e.party_id === id)?.seats ?? 0;
-  const activePartyIds = entries.filter((e) => e.in_government).map((e) => e.party_id);
+  // The virtual "Misc" entry (party_id null) never joins a coalition — compute_coalitions
+  // already excludes it from every coalition's party_ids, so it's filtered out here too.
+  const activePartyIds = entries
+    .filter((e) => e.in_government)
+    .map((e) => e.party_id)
+    .filter((id): id is number => id !== null);
 
   const handleActivate = (coalition: Coalition) => {
     confirmDialog({
@@ -53,7 +58,9 @@ export function CoalitionsPage() {
       onConfirm: async () => {
         const partySet = new Set(coalition.party_ids);
         await Promise.all(
-          entries.map((entry) => parliamentPeriodsApi.setInGovernment(entry.id, partySet.has(entry.party_id))),
+          entries.map((entry) =>
+            parliamentPeriodsApi.setInGovernment(entry.id, entry.party_id !== null && partySet.has(entry.party_id)),
+          ),
         );
         refresh();
       },
