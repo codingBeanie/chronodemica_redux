@@ -5,7 +5,7 @@ import { layoutHemicycleSeats } from "../utils/hemicycleLayout";
 import { DiagramSurface } from "./DiagramSurface";
 
 interface ParliamentHemicycleParty {
-  id: number;
+  id: number | null;
   name: string;
   abbreviation: string;
   color: string;
@@ -72,7 +72,7 @@ export function ParliamentHemicycle({ parties }: { parties: ParliamentHemicycleP
 
       <Group gap="lg" justify="center" mt="sm">
         {sortedParties.map((party) => (
-          <Group key={party.id} gap={6} wrap="nowrap">
+          <Group key={String(party.id)} gap={6} wrap="nowrap">
             <span
               style={{
                 display: "inline-block",
@@ -84,7 +84,7 @@ export function ParliamentHemicycle({ parties }: { parties: ParliamentHemicycleP
               }}
             />
             <Text size="sm" c="dimmed">
-              ({party.abbreviation}) {party.name} ({party.seats})
+              {party.abbreviation} ({party.seats})
             </Text>
           </Group>
         ))}

@@ -7,8 +7,14 @@ from app.models.party import Party
 
 
 def compute_coalitions(session: Session, period_id: int) -> dict:
+    # The virtual "Misc" bucket (party_id None) can hold seats like a real party
+    # (see Period.misc_excluded_from_parliament), but it never acts as a
+    # coalition partner — it's excluded here regardless of that flag.
     entries = session.exec(
-        select(ParliamentPeriod).where(ParliamentPeriod.period_id == period_id)
+        select(ParliamentPeriod).where(
+            ParliamentPeriod.period_id == period_id,
+            ParliamentPeriod.party_id.is_not(None),
+        )
     ).all()
     if not entries:
         return {"total_seats": 0, "majority_threshold": 0, "coalitions": []}

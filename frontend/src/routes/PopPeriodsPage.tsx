@@ -76,7 +76,7 @@ export function PopPeriodsPage() {
     previousPeriod && currentPeriod ? yearsBetween(previousPeriod.voting_date, currentPeriod.voting_date) : null;
   const growthRate =
     previousPeriod && currentPeriod && years !== null
-      ? annualGrowthPercent(previousPeriod.total_population, currentPeriod.total_population, years)
+      ? annualGrowthPercent(previousPeriod.total_population, totalPopulationDraft, years)
       : null;
 
   const shareSum = pops.reduce((sum, pop) => sum + (shareDrafts[pop.id] ?? 0), 0);

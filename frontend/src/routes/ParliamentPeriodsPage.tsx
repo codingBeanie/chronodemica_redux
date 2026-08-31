@@ -11,6 +11,12 @@ import { SortableTh } from "../components/SortableTh";
 import { usePeriodContext } from "../context/PeriodContext";
 import { compareSortValues, useSort } from "../hooks/useSort";
 import { useTranslation } from "../i18n/I18nProvider";
+import {
+  partyDisplayAbbreviation,
+  partyDisplayColor,
+  partyDisplayName,
+  partyDisplayNameWithAbbreviation,
+} from "../utils/partyDisplay";
 
 type SortKey = "party" | "seats" | "in_government";
 
@@ -35,10 +41,10 @@ export function ParliamentPeriodsPage() {
 
   useEffect(refresh, [selectedPeriodId]);
 
-  const partyName = (id: number) => parties.find((p) => p.id === id)?.name ?? "-";
-  const partyAbbreviation = (id: number) => parties.find((p) => p.id === id)?.abbreviation ?? "-";
-  const partyColor = (id: number) => parties.find((p) => p.id === id)?.color_bg ?? "#adb5bd";
-  const partySeatOrientation = (id: number) => parties.find((p) => p.id === id)?.seat_orientation ?? 50;
+  const partyName = (id: number | null) => partyDisplayName(id, parties);
+  const partyAbbreviation = (id: number | null) => partyDisplayAbbreviation(id, parties);
+  const partyColor = (id: number | null) => partyDisplayColor(id, parties);
+  const partySeatOrientation = (id: number | null) => parties.find((p) => p.id === id)?.seat_orientation ?? 50;
 
   const getSortValue = (entry: ParliamentPeriod, key: SortKey): string | number => {
     if (key === "party") return partyName(entry.party_id);
@@ -100,7 +106,7 @@ export function ParliamentPeriodsPage() {
           <Table.Tbody>
             {sortedEntries.map((entry) => (
               <Table.Tr key={entry.id}>
-                <Table.Td>{partyName(entry.party_id)}</Table.Td>
+                <Table.Td>{partyDisplayNameWithAbbreviation(entry.party_id, parties)}</Table.Td>
                 <Table.Td ta="right">{entry.seats}</Table.Td>
                 <Table.Td>
                   <InGovernmentIcon inGovernment={entry.in_government} />

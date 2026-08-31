@@ -184,6 +184,10 @@ def run_simulation(session: Session, period: Period) -> None:
     total_national_votes = sum(national_totals.values())
     if total_national_votes > 0:
         config = VOTING_SYSTEM_CONFIGS[period.voting_system]
+        # False (default) treats the "Misc" bucket (pid None) like a real party,
+        # competing for seats under the same threshold as everyone else; True
+        # excludes it, leaving its votes visible in results but seatless.
+        misc_excluded = bool(period.misc_excluded_from_parliament)
         if config.threshold_type == ThresholdType.NATURAL_SEAT_QUOTA:
             # No percentage cutoff: a party qualifies once its ideal (pre-rounding)
             # seat share reaches a full 1.0 seat. Below that, it gets nothing, and
@@ -191,12 +195,15 @@ def run_simulation(session: Session, period: Period) -> None:
             eligible = {
                 pid: v
                 for pid, v in national_totals.items()
-                if pid is not None and v / total_national_votes * period.seats >= 1.0
+                if (pid is not None or not misc_excluded)
+                and v / total_national_votes * period.seats >= 1.0
             }
         else:
             threshold = config.threshold_percent / 100 * total_national_votes
             eligible = {
-                pid: v for pid, v in national_totals.items() if v >= threshold and pid is not None
+                pid: v
+                for pid, v in national_totals.items()
+                if v >= threshold and (pid is not None or not misc_excluded)
             }
         if eligible:
             allocation = sainte_lague_apportion(eligible, period.seats)

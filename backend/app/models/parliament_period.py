@@ -9,7 +9,9 @@ class ParliamentPeriodBase(SQLModel):
 class ParliamentPeriod(ParliamentPeriodBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     period_id: int = Field(foreign_key="period.id")
-    party_id: int = Field(foreign_key="party.id")
+    # None represents the virtual "Misc" bucket winning seats like a real party
+    # (see Period.misc_excluded_from_parliament) rather than a stored party.
+    party_id: int | None = Field(default=None, foreign_key="party.id")
 
 
 class ParliamentPeriodGovernmentUpdate(SQLModel):
@@ -19,4 +21,4 @@ class ParliamentPeriodGovernmentUpdate(SQLModel):
 class ParliamentPeriodRead(ParliamentPeriodBase):
     id: int
     period_id: int
-    party_id: int
+    party_id: int | None

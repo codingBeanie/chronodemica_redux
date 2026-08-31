@@ -272,34 +272,33 @@ export function SimulationPage() {
                               />
                             </Table.Td>
                           </Table.Tr>
-                          {isExpanded && (
-                            <Table.Tr>
-                              <Table.Td colSpan={4} p={0}>
-                                {popBreakdown.length === 0 ? (
-                                  <Text size="sm" c="dimmed" p="sm">
+                          {isExpanded &&
+                            (popBreakdown.length === 0 ? (
+                              <Table.Tr>
+                                <Table.Td colSpan={4}>
+                                  <Text size="sm" c="dimmed" pl="xl">
                                     {t.simulation.votesByPopEmpty}
                                   </Text>
-                                ) : (
-                                  <Table withRowBorders={false}>
-                                    <Table.Thead>
-                                      <Table.Tr>
-                                        <Table.Th pl="xl">{t.popPeriods.columnPop}</Table.Th>
-                                        <Table.Th ta="right">{t.simulation.columnVotesByPop}</Table.Th>
-                                      </Table.Tr>
-                                    </Table.Thead>
-                                    <Table.Tbody>
-                                      {popBreakdown.map((row) => (
-                                        <Table.Tr key={row.popId}>
-                                          <Table.Td pl="xl">{row.name}</Table.Td>
-                                          <Table.Td ta="right">{row.votes.toLocaleString()}</Table.Td>
-                                        </Table.Tr>
-                                      ))}
-                                    </Table.Tbody>
-                                  </Table>
-                                )}
-                              </Table.Td>
-                            </Table.Tr>
-                          )}
+                                </Table.Td>
+                              </Table.Tr>
+                            ) : (
+                              popBreakdown.map((row) => (
+                                <Table.Tr key={row.popId}>
+                                  <Table.Td pl="xl">
+                                    <Text size="sm" c="dimmed">
+                                      {row.name}
+                                    </Text>
+                                  </Table.Td>
+                                  <Table.Td ta="right">
+                                    <Text size="sm" c="dimmed">
+                                      {row.votes.toLocaleString()}
+                                    </Text>
+                                  </Table.Td>
+                                  <Table.Td />
+                                  <Table.Td />
+                                </Table.Tr>
+                              ))
+                            ))}
                         </Fragment>
                       );
                     })}

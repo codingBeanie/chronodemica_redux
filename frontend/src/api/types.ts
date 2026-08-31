@@ -62,6 +62,7 @@ export interface Period {
   voting_system: VotingSystem;
   seats: number;
   total_population: number;
+  misc_excluded_from_parliament: boolean;
 }
 export type PeriodInput = Omit<Period, "id" | "world_id">;
 
@@ -153,7 +154,9 @@ export interface Votes {
 export interface ParliamentPeriod {
   id: number;
   period_id: number;
-  party_id: number;
+  // null marks the "Misc" bucket winning seats like a real party (see
+  // Period.misc_excluded_from_parliament).
+  party_id: number | null;
   seats: number;
   in_government: boolean;
 }

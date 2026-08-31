@@ -200,6 +200,71 @@ def _migrate_popperiod_to_share() -> None:
         conn.execute(text("ALTER TABLE popperiod DROP COLUMN eligibility"))
 
 
+def _migrate_add_misc_excluded_to_period() -> None:
+    """Adds `Period.misc_excluded_from_parliament`, the new flag controlling
+    whether the virtual "Misc" vote bucket competes for parliamentary seats
+    like a real party. `create_all()` can't add columns to an existing table,
+    so this backfills the column (default False = Misc competes for seats)
+    for periods created before the flag existed.
+    """
+    db_inspector = inspect(engine)
+    if not db_inspector.has_table("period"):
+        return
+
+    period_columns = {col["name"] for col in db_inspector.get_columns("period")}
+    if "misc_excluded_from_parliament" in period_columns:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text("ALTER TABLE period ADD COLUMN misc_excluded_from_parliament BOOLEAN NOT NULL DEFAULT 0")
+        )
+
+
+def _rename_parliamentperiod_table_if_party_id_not_null() -> None:
+    """First half of the migration making `parliamentperiod.party_id` nullable.
+
+    The virtual "Misc" bucket can now win seats like a real party (see
+    `Period.misc_excluded_from_parliament`), so a ParliamentPeriod row's
+    party_id must be able to be NULL. SQLite can't drop a NOT NULL constraint
+    in place, so this renames the old table out of the way; `create_all()`
+    (called right after, in `init_db()`) then builds a fresh `parliamentperiod`
+    table matching the current, nullable model.
+    `_finish_parliamentperiod_migration()` copies the data back in.
+    """
+    db_inspector = inspect(engine)
+    if not db_inspector.has_table("parliamentperiod"):
+        return
+
+    party_id_column = next(
+        (col for col in db_inspector.get_columns("parliamentperiod") if col["name"] == "party_id"), None
+    )
+    if party_id_column is None or party_id_column["nullable"]:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE parliamentperiod RENAME TO parliamentperiod_old"))
+
+
+def _finish_parliamentperiod_migration() -> None:
+    """Second half of the migration started in
+    `_rename_parliamentperiod_table_if_party_id_not_null()`. Must run after
+    `create_all()` has (re)created `parliamentperiod` from the current model.
+    """
+    db_inspector = inspect(engine)
+    if not db_inspector.has_table("parliamentperiod_old"):
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO parliamentperiod (id, seats, in_government, period_id, party_id) "
+                "SELECT id, seats, in_government, period_id, party_id FROM parliamentperiod_old"
+            )
+        )
+        conn.execute(text("DROP TABLE parliamentperiod_old"))
+
+
 def _sync_party_periods_for_all_worlds() -> None:
     """Backfills PartyPeriod rows for every founded-and-not-yet-dissolved party
     across every existing world. Runs on every startup — additive and
@@ -227,8 +292,11 @@ def init_db() -> None:
     _migrate_user_table_to_oidc()
     _migrate_pop_abbreviation_to_description()
     _migrate_popperiod_to_share()
+    _migrate_add_misc_excluded_to_period()
+    _rename_parliamentperiod_table_if_party_id_not_null()
     SQLModel.metadata.create_all(engine)
     _finish_votes_migration_and_drop_misc_party()
+    _finish_parliamentperiod_migration()
     _sync_party_periods_for_all_worlds()
 
 

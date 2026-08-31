@@ -1,4 +1,4 @@
-import { Button, Modal, NumberInput, Select, TextInput } from "@mantine/core";
+import { Button, Checkbox, Modal, NumberInput, Select, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -20,9 +20,17 @@ const emptyValues: PeriodInput = {
   voting_system: VOTING_SYSTEMS[0].value,
   seats: 100,
   total_population: 0,
+  misc_excluded_from_parliament: false,
 };
 
-type SortKey = "voting_date" | "start_date" | "end_date" | "voting_system" | "seats" | "total_population";
+type SortKey =
+  | "voting_date"
+  | "start_date"
+  | "end_date"
+  | "voting_system"
+  | "seats"
+  | "total_population"
+  | "misc_excluded_from_parliament";
 
 export function PeriodsPage() {
   const t = useTranslation();
@@ -46,6 +54,7 @@ export function PeriodsPage() {
       voting_system: period.voting_system,
       seats: period.seats,
       total_population: period.total_population,
+      misc_excluded_from_parliament: period.misc_excluded_from_parliament,
     });
     open();
   };
@@ -95,6 +104,11 @@ export function PeriodsPage() {
       render: (period) => period.total_population.toLocaleString(),
     },
     {
+      key: "misc_excluded_from_parliament",
+      label: t.periods.columnMiscExcludedFromParliament,
+      render: (period) => (period.misc_excluded_from_parliament ? t.common.yes : t.common.no),
+    },
+    {
       key: "actions",
       label: null,
       sortable: false,
@@ -123,7 +137,13 @@ export function PeriodsPage() {
         items={periods}
         getRowKey={(period) => period.id}
         getSortValue={(period, key) =>
-          key === "voting_system" ? votingSystemLabel(period.voting_system) : key === "actions" ? "" : period[key]
+          key === "voting_system"
+            ? votingSystemLabel(period.voting_system)
+            : key === "actions"
+              ? ""
+              : key === "misc_excluded_from_parliament"
+                ? Number(period.misc_excluded_from_parliament)
+                : period[key]
         }
         initialSortKey="voting_date"
         loading={loading}
@@ -175,6 +195,12 @@ export function PeriodsPage() {
             min={0}
             mt="sm"
             {...form.getInputProps("total_population")}
+          />
+          <Checkbox
+            label={t.periods.fieldMiscExcludedFromParliament}
+            description={t.periods.fieldMiscExcludedFromParliamentHint}
+            mt="sm"
+            {...form.getInputProps("misc_excluded_from_parliament", { type: "checkbox" })}
           />
           <Button type="submit" mt="md" fullWidth>
             {t.common.save}
