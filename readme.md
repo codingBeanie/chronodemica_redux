@@ -121,7 +121,7 @@ so self-hosting Chronodemica does not require a local build. Save the following 
 
 ```yaml
 services:
-  backend:
+  chronodemica-backend:
     image: ghcr.io/codingbeanie/chronodemica_redux-backend:latest
     ports:
       - "8010:8010"
@@ -139,7 +139,7 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      - chronodemica-backend
     restart: unless-stopped
 
 volumes:
@@ -184,6 +184,12 @@ outside, so it doesn't need its own domain, and its published port in `docker-co
 irrelevant to this. Whatever you set `OIDC_REDIRECT_URI` to must then be registered — character
 for character, including `https://` and the exact path — as the allowed redirect URI for this
 client at your OIDC provider; a mismatch here is exactly what produces that error.
+
+If your reverse proxy is itself a container that reaches `frontend` over a shared Docker network
+(rather than a published host port), make sure no other service on that shared network is also
+named `chronodemica-backend` — Docker's embedded DNS is queryable across every network a container
+joins, so a name collision there would silently proxy `/api/` requests to the wrong container
+(502s that look like a backend outage even though the real backend is healthy).
 
 Then start it with:
 

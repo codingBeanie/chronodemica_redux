@@ -1,5 +1,10 @@
 services:
-  backend:
+  # Named "chronodemica-backend" rather than plain "backend": nginx's proxy_pass
+  # (frontend/nginx.conf) resolves this name via Docker's embedded DNS, which is
+  # queryable across any other network the frontend container joins (e.g. a shared
+  # reverse-proxy network) — a generic name risks colliding with an unrelated
+  # service of the same name on that network.
+  chronodemica-backend:
     image: ghcr.io/codingbeanie/chronodemica_redux-backend:latest
     ports:
       - "8010:8010"
@@ -17,7 +22,7 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      - chronodemica-backend
     restart: unless-stopped
 
 volumes:
