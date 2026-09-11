@@ -7,26 +7,28 @@ from app.models.party import Party
 
 
 def compute_coalitions(session: Session, period_id: int) -> dict:
-    # The virtual "Misc" bucket (party_id None) can hold seats like a real party
-    # (see Period.misc_excluded_from_parliament), but it never acts as a
-    # coalition partner — it's excluded here regardless of that flag.
     entries = session.exec(
-        select(ParliamentPeriod).where(
-            ParliamentPeriod.period_id == period_id,
-            ParliamentPeriod.party_id.is_not(None),
-        )
+        select(ParliamentPeriod).where(ParliamentPeriod.period_id == period_id)
     ).all()
     if not entries:
         return {"total_seats": 0, "majority_threshold": 0, "coalitions": []}
 
-    seats_by_party = {entry.party_id: entry.seats for entry in entries}
+    # total_seats/majority_threshold count every occupied seat, including the virtual
+    # "Misc" bucket's (party_id None — see Period.misc_excluded_from_parliament) when
+    # it holds seats like a real party: those seats are physically in the chamber and
+    # can't be relied on by any coalition, so a real majority still needs to clear
+    # them, not just half of the seats real parties happen to hold.
+    total_seats = sum(entry.seats for entry in entries)
+    majority_threshold = total_seats // 2 + 1
+
+    # Misc itself, however, never acts as a coalition partner — excluded from here on
+    # regardless of that flag.
+    party_entries = [entry for entry in entries if entry.party_id is not None]
+    seats_by_party = {entry.party_id: entry.seats for entry in party_entries}
     party_ids = list(seats_by_party.keys())
 
     parties = session.exec(select(Party).where(Party.id.in_(party_ids))).all()
     orientation_by_party = {party.id: party.seat_orientation for party in parties}
-
-    total_seats = sum(seats_by_party.values())
-    majority_threshold = total_seats // 2 + 1
 
     minimal_coalitions: list[dict] = []
     for size in range(1, len(party_ids) + 1):

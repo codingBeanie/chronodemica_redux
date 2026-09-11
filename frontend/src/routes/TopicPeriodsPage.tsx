@@ -34,7 +34,7 @@ import { PeriodSelector } from "../components/PeriodSelector";
 import { usePeriodContext } from "../context/PeriodContext";
 import { useCrud } from "../hooks/useCrud";
 import { useTranslation } from "../i18n/I18nProvider";
-import { partyNameWithAbbreviation } from "../utils/partyDisplay";
+import { isPartyActiveAt, partyNameWithAbbreviation } from "../utils/partyDisplay";
 
 const emptyValues: TopicPeriodInput = { topic_id: 0, period_id: 0, importance: 10 };
 const NONE_VALUE = "__none__";
@@ -48,7 +48,8 @@ function approvalKey(popId: number, statementId: number): string {
 
 export function TopicPeriodsPage() {
   const t = useTranslation();
-  const { selectedPeriodId } = usePeriodContext();
+  const { selectedPeriodId, periods } = usePeriodContext();
+  const currentPeriod = periods.find((period) => period.id === selectedPeriodId) ?? null;
   const { items, loading, error, create, update, remove } = useCrud(topicPeriodsApi, {
     period_id: selectedPeriodId ?? 0,
   });
@@ -75,8 +76,8 @@ export function TopicPeriodsPage() {
   }, []);
 
   // Only parties/pops that already have a PartyPeriod/PopPeriod row for this
-  // period (every pop always does; every founded-and-not-dissolved party does)
-  // can meaningfully approve statements here.
+  // period (every pop always does; every founded-and-not-dissolved party does,
+  // at the time that row was created) can meaningfully approve statements here.
   useEffect(() => {
     if (!selectedPeriodId) {
       setPartyPeriods([]);
@@ -87,7 +88,16 @@ export function TopicPeriodsPage() {
     popPeriodsApi.list({ period_id: selectedPeriodId }).then(setPopPeriods);
   }, [selectedPeriodId]);
 
-  const partiesInPeriod = parties.filter((party) => partyPeriods.some((pp) => pp.party_id === party.id));
+  // sync_party_periods() never deletes a PartyPeriod row once created, even if the
+  // party's founded/dissolved dates are edited afterward to make it retroactively
+  // ineligible for that period (see backend/app/services/party_periods.py) — so row
+  // existence alone isn't enough here; isPartyActiveAt re-checks against the
+  // party's current founded/dissolved values.
+  const partiesInPeriod = parties.filter(
+    (party) =>
+      partyPeriods.some((pp) => pp.party_id === party.id) &&
+      (!currentPeriod || isPartyActiveAt(party, currentPeriod.voting_date)),
+  );
   const popsInPeriod = pops.filter((pop) => popPeriods.some((pp) => pp.pop_id === pop.id));
 
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "-";
