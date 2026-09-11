@@ -74,23 +74,28 @@ population group to see exactly which statements drove the outcome.
 - Python 3.12+ and [uv](https://docs.astral.sh/uv/)
 - Node.js 20+ and npm
 
-### Configure OIDC
+### Configure the backend
 
-Login is exclusively via OIDC, so the backend needs your provider's credentials before it can
-start. The template lives at `backend/.env.example`; copy it to `backend/.env` (same folder,
-right next to it) and fill in the real values:
+Login is exclusively via OIDC in production, but local development skips it by default: the
+template's `AUTH_DISABLED=true` logs you straight in as a fixed local user, no provider needed.
+Copy the template to `backend/.env` (same folder, right next to it):
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-`backend/.env` is where all backend configuration — including the OIDC parameters
-(`OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_SCOPES`) and
+`backend/.env` is where all backend configuration — `AUTH_DISABLED`, the OIDC parameters
+(`OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_SCOPES`), and
 `SESSION_SECRET_KEY` — is actually maintained; `backend/.env.example` is only the checked-in
 template and is never read by the app itself. `backend/.env` is git-ignored, so your real secrets
-never end up in the repo — never put real credentials into `.env.example`. See the comments in
-`backend/.env.example` for what each value means and where to get it from your provider (the
-callback/redirect URI you register there must match `OIDC_REDIRECT_URI` exactly).
+never end up in the repo — never put real credentials into `.env.example`.
+
+Only set `AUTH_DISABLED=false` and fill in the OIDC fields if you specifically want to exercise
+the real login flow locally. See the comments in `backend/.env.example` for what each OIDC value
+means and where to get it from your provider (the callback/redirect URI you register there must
+match `OIDC_REDIRECT_URI` exactly). This has no effect on production: the Docker/Compose path
+(below) reads a separate root-level `.env` that has no `AUTH_DISABLED` variable at all, so login
+is always required there regardless of what's set here.
 
 ### Backend
 

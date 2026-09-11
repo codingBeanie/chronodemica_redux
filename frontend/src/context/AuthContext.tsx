@@ -45,6 +45,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     (async () => {
+      // import.meta.env.DEV is a Vite build-time constant — always false in a
+      // production build (frontend/Dockerfile runs `npm run build`), so this path is
+      // physically absent from anything actually deployed, regardless of backend
+      // config. Tries the no-token request first; if the dev backend doesn't have
+      // AUTH_DISABLED set (e.g. someone's deliberately exercising real OIDC locally),
+      // this 401s and falls through to the normal token flow below. Uses probeMe(),
+      // not me(), so this expected 401 can't trigger the unauthorized handler above
+      // and clear a real token — React 18 StrictMode runs this effect twice in dev,
+      // and the two copies' requests interleave.
+      if (import.meta.env.DEV) {
+        try {
+          const me = await authApi.probeMe();
+          setEmail(me.email);
+          setDisplayName(me.display_name);
+          setIsAdmin(me.is_admin);
+          setStatus("authenticated");
+          return;
+        } catch {
+          // fall through
+        }
+      }
+
       const token = consumeTokenFromUrlFragment() ?? localStorage.getItem(TOKEN_STORAGE_KEY);
       if (!token) {
         setStatus("needs-login");

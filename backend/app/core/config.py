@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5180"
     session_secret_key: str = "dev-insecure-session-secret-change-me"
 
+    # Skips OIDC/token verification entirely, auto-provisioning a fixed local user
+    # instead — see require_auth(). Only ever set in backend/.env (read when running
+    # locally without Docker); the Docker/production path reads the separate root-level
+    # .env instead, which never sets this, so it defaults to False there.
+    auth_disabled: bool = False
+
     oidc_issuer: str = ""
     oidc_client_id: str = ""
     oidc_client_secret: str = ""

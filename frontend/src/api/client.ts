@@ -28,15 +28,24 @@ export function apiHeaders(includeContentType = true): Record<string, string> {
   return headers;
 }
 
-export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+interface ApiFetchOptions extends RequestInit {
+  // For calls whose 401 is an expected, routine outcome rather than "the session
+  // died" (e.g. AuthContext's dev-mode probe) — skips the global unauthorized
+  // handler so this call's failure can't clear a token some OTHER in-flight
+  // request (React 18 StrictMode runs effects twice in dev) is legitimately using.
+  skipUnauthorizedHandler?: boolean;
+}
+
+export async function apiFetch<T>(path: string, options?: ApiFetchOptions): Promise<T> {
+  const { skipUnauthorizedHandler, ...init } = options ?? {};
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: { ...apiHeaders(), ...options?.headers },
+    ...init,
+    headers: { ...apiHeaders(), ...init.headers },
   });
 
   if (response.status === 401) {
     const body = await response.text();
-    onUnauthorized?.();
+    if (!skipUnauthorizedHandler) onUnauthorized?.();
     throw new Error(`API error 401: ${body}`);
   }
 

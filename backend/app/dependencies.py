@@ -1,11 +1,12 @@
 from fastapi import Depends, Header, HTTPException
 from sqlmodel import Session
 
+from app.core.config import settings
 from app.db.session import get_session
 from app.models.period import Period
 from app.models.user import User
 from app.models.world import World
-from app.services.auth import get_user_by_token
+from app.services.auth import get_or_create_dev_user, get_user_by_token
 
 
 def get_bearer_token(authorization: str | None = Header(default=None)) -> str:
@@ -15,9 +16,16 @@ def get_bearer_token(authorization: str | None = Header(default=None)) -> str:
 
 
 def require_auth(
-    token: str = Depends(get_bearer_token),
+    authorization: str | None = Header(default=None),
     session: Session = Depends(get_session),
 ) -> User:
+    # Local-dev-only escape hatch (see Settings.auth_disabled) — skips token
+    # verification entirely rather than routing through get_bearer_token, which would
+    # otherwise reject the request for having no Authorization header before this
+    # function's body ever runs.
+    if settings.auth_disabled:
+        return get_or_create_dev_user(session)
+    token = get_bearer_token(authorization)
     user = get_user_by_token(session, token)
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid or expired session")

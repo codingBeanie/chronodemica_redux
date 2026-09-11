@@ -50,6 +50,23 @@ def get_or_create_user(
     return user
 
 
+# Fixed synthetic identity for the AUTH_DISABLED dev bypass (see dependencies.require_auth)
+# — routed through the normal get_or_create_user() so it still becomes admin and gets a
+# seeded default world the first time, exactly like a real OIDC login would.
+DEV_USER_ISSUER = "dev"
+DEV_USER_SUBJECT = "dev"
+
+
+def get_or_create_dev_user(session: Session) -> User:
+    return get_or_create_user(
+        session,
+        issuer=DEV_USER_ISSUER,
+        subject=DEV_USER_SUBJECT,
+        email="dev@localhost",
+        display_name="Dev User",
+    )
+
+
 def get_user_by_token(session: Session, token: str) -> User | None:
     auth_session = session.exec(select(AuthSession).where(AuthSession.token == token)).first()
     if auth_session is None:

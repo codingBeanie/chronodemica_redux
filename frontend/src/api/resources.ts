@@ -62,6 +62,9 @@ export const authApi = {
   loginUrl: `${API_BASE_URL}/api/auth/oidc/login`,
   logout: () => apiFetch<void>("/api/auth/logout", { method: "POST" }),
   me: () => apiFetch<MeResponse>("/api/auth/me"),
+  // Dev-mode-only speculative check (see AuthContext) — a 401 here is a routine,
+  // expected outcome, not a "session died" event.
+  probeMe: () => apiFetch<MeResponse>("/api/auth/me", { skipUnauthorizedHandler: true }),
 };
 
 export const worldsApi = createResource<World, WorldInput>("/api/worlds");
