@@ -1,0 +1,10 @@
+/* Hides the native scrollbar on ChipScroller's track — overflow is meant to read as
+   "clipped, scroll via the arrow buttons", not as a visible scroll region. */
+.chip-scroller-track {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chip-scroller-track::-webkit-scrollbar {
+  display: none;
+}

@@ -25,6 +25,7 @@ import { PeriodProvider } from "./context/PeriodContext";
 import { useWorldContext, WorldProvider } from "./context/WorldContext";
 import { useTranslation } from "./i18n/I18nProvider";
 import { CoalitionsPage } from "./routes/CoalitionsPage";
+import { GovernmentsPage } from "./routes/GovernmentsPage";
 import { ParliamentPeriodsPage } from "./routes/ParliamentPeriodsPage";
 import { PartiesPage } from "./routes/PartiesPage";
 import { PartyPeriodsPage } from "./routes/PartyPeriodsPage";
@@ -162,6 +163,11 @@ function MainShell() {
           label: t.nav.parliament,
           path: "/election-data/parliament",
           element: <ParliamentPeriodsPage />,
+        },
+        {
+          label: t.nav.governments,
+          path: "/election-data/governments",
+          element: <GovernmentsPage />,
         },
         {
           label: t.nav.votingBehaviour,

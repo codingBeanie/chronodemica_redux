@@ -19,6 +19,8 @@ export const en = {
     sortAscending: "Sorted ascending — activate to sort descending",
     sortDescending: "Sorted descending — activate to sort ascending",
     sortNone: "Not sorted — activate to sort ascending",
+    scrollLeft: "Scroll left",
+    scrollRight: "Scroll right",
   },
   nav: {
     toggleMenu: "Toggle navigation menu",
@@ -36,6 +38,7 @@ export const en = {
     simulation: "Election",
     parliament: "Parliament",
     coalitions: "Coalitions",
+    governments: "Governments",
     votingBehaviour: "Voting Behaviour",
   },
   auth: {
@@ -77,7 +80,6 @@ export const en = {
   },
   periodSelector: {
     label: "Period",
-    placeholder: "Select a period",
     none: "No periods yet. Create one under Main Data → Periods first.",
   },
   periods: {
@@ -230,6 +232,9 @@ export const en = {
     noPreviousPeriodForComparison: "No earlier period to compare against yet.",
     previousPeriodNoResults: "The previous period has no simulation results yet.",
     thresholdLabel: (percent: number) => `${percent}% threshold`,
+    byPopChartTitle: "Votes by Population Group",
+    byPopChartSelectorLabel: "Population Group",
+    byPopChartEmpty: "No votes for this population group.",
   },
   parliamentPeriods: {
     pageTitle: "Parliament",
@@ -248,6 +253,15 @@ export const en = {
     activeLabel: "Currently active",
     activateButton: "Mark as active",
     confirmActivate: "Mark this coalition as the active government? This replaces the current government marking.",
+  },
+  governments: {
+    pageTitle: "Governments",
+    subtitle: "The governing parties for every period, most recent seat counts first.",
+    columnPeriod: "Period",
+    columnGovernment: "Government",
+    noGovernment: "No government marked yet.",
+    noResultsYet: "No simulation results yet.",
+    empty: "No periods yet.",
   },
   votingBehaviour: {
     pageTitle: "Voting Behaviour",

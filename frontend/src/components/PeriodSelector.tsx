@@ -1,7 +1,8 @@
-import { Select, Text } from "@mantine/core";
+import { Stack, Text } from "@mantine/core";
 
 import { usePeriodContext } from "../context/PeriodContext";
 import { useTranslation } from "../i18n/I18nProvider";
+import { ChipScroller } from "./ChipScroller";
 
 export function PeriodSelector() {
   const t = useTranslation();
@@ -15,20 +16,31 @@ export function PeriodSelector() {
     );
   }
 
-  const options = periods.map((period) => ({
+  const sortedPeriods = [...periods].sort((a, b) => a.voting_date.localeCompare(b.voting_date));
+  const options = sortedPeriods.map((period) => ({
     value: String(period.id),
-    label: period.voting_date,
+    // "YYYY-MM-DD" (from a native date input) — slicing avoids a Date/local-timezone
+    // round-trip that can roll a January date back into the previous year.
+    label: period.voting_date.slice(0, 4),
   }));
+  const selectedPeriod = periods.find((period) => period.id === selectedPeriodId) ?? null;
 
   return (
-    <Select
-      label={t.periodSelector.label}
-      placeholder={t.periodSelector.placeholder}
-      data={options}
-      value={selectedPeriodId ? String(selectedPeriodId) : null}
-      onChange={(value) => setSelectedPeriodId(value ? Number(value) : null)}
-      maw={360}
-      mb="md"
-    />
+    <Stack gap={4} mb="md">
+      <Text size="sm" fw={500}>
+        {t.periodSelector.label}
+      </Text>
+      <ChipScroller
+        options={options}
+        value={selectedPeriodId !== null ? String(selectedPeriodId) : null}
+        onChange={(value) => setSelectedPeriodId(Number(value))}
+        ariaLabel={t.periodSelector.label}
+      />
+      {selectedPeriod && (
+        <Text size="xs" c="dimmed">
+          {selectedPeriod.voting_date}
+        </Text>
+      )}
+    </Stack>
   );
 }

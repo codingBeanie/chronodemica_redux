@@ -1,10 +1,11 @@
-import { Button, Group, Table, Text, UnstyledButton } from "@mantine/core";
+import { Box, Button, Divider, Group, Table, Text, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
 import { Fragment, useEffect, useState } from "react";
 
 import { parliamentPeriodsApi, partiesApi, popPeriodsApi, popsApi, simulationApi, votesApi } from "../api/resources";
 import type { ParliamentPeriod, Party, Pop, PopPeriod, Votes } from "../api/types";
+import { ChipScroller } from "../components/ChipScroller";
 import { confirmDialog } from "../components/ConfirmDialog";
 import { DiagramSurface } from "../components/DiagramSurface";
 import { InGovernmentIcon } from "../components/InGovernmentIcon";
@@ -35,11 +36,18 @@ export function SimulationPage() {
   const [previousVotes, setPreviousVotes] = useState<Votes[]>([]);
   const [running, setRunning] = useState(false);
   const [expandedPartyKey, setExpandedPartyKey] = useState<string | null>(null);
+  const [selectedPopId, setSelectedPopId] = useState<number | null>(null);
 
   useEffect(() => {
     partiesApi.list().then(setParties);
     popsApi.list().then(setPops);
   }, []);
+
+  useEffect(() => {
+    if (selectedPopId === null && pops.length > 0) {
+      setSelectedPopId(pops[0].id);
+    }
+  }, [pops, selectedPopId]);
 
   const refresh = () => {
     if (!selectedPeriodId) {
@@ -134,6 +142,33 @@ export function SimulationPage() {
       : null;
     return { id: String(id), abbreviation: partyAbbreviation(id), color: partyColor(id), percent, change };
   });
+
+  // Same shape as the national chart above, but scoped to a single selected pop
+  // group — its own vote totals, its own share of just that group's votes cast.
+  const popVotesTotals = new Map<number | null, number>();
+  for (const vote of votes) {
+    if (vote.pop_id !== selectedPopId) continue;
+    popVotesTotals.set(vote.party_id, (popVotesTotals.get(vote.party_id) ?? 0) + vote.votes);
+  }
+  const popTotalVotes = [...popVotesTotals.values()].reduce((sum, v) => sum + v, 0);
+
+  const previousPopVotesTotals = new Map<number | null, number>();
+  for (const vote of previousVotes) {
+    if (vote.pop_id !== selectedPopId) continue;
+    previousPopVotesTotals.set(vote.party_id, (previousPopVotesTotals.get(vote.party_id) ?? 0) + vote.votes);
+  }
+  const previousPopTotalVotes = [...previousPopVotesTotals.values()].reduce((sum, v) => sum + v, 0);
+
+  const popChartParties = [...popVotesTotals.keys()]
+    .sort((a, b) => (popVotesTotals.get(b) ?? 0) - (popVotesTotals.get(a) ?? 0))
+    .map((id) => {
+      const percent = popTotalVotes > 0 ? ((popVotesTotals.get(id) ?? 0) / popTotalVotes) * 100 : 0;
+      const hasComparison = previousPeriod !== null && previousPopTotalVotes > 0 && previousPopVotesTotals.has(id);
+      const change = hasComparison
+        ? percent - ((previousPopVotesTotals.get(id) ?? 0) / previousPopTotalVotes) * 100
+        : null;
+      return { id: String(id), abbreviation: partyAbbreviation(id), color: partyColor(id), percent, change };
+    });
 
   const handleRun = async () => {
     if (!selectedPeriodId) return;
@@ -305,6 +340,29 @@ export function SimulationPage() {
                   </Table.Tbody>
                 </Table>
               </div>
+
+              <Divider my="xl" />
+
+              <Text fw={600} mb="sm">
+                {t.simulation.byPopChartTitle}
+              </Text>
+              <Box mb="md">
+                <ChipScroller
+                  options={pops.map((pop) => ({ value: String(pop.id), label: pop.name }))}
+                  value={selectedPopId !== null ? String(selectedPopId) : null}
+                  onChange={(value) => setSelectedPopId(Number(value))}
+                  ariaLabel={t.simulation.byPopChartSelectorLabel}
+                />
+              </Box>
+              <DiagramSurface mb="xl">
+                {popChartParties.length > 0 ? (
+                  <VotingResultsChart parties={popChartParties} />
+                ) : (
+                  <Text c="dimmed" ta="center" py="xl">
+                    {t.simulation.byPopChartEmpty}
+                  </Text>
+                )}
+              </DiagramSurface>
             </>
           )}
         </>
