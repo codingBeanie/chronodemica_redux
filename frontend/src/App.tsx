@@ -29,6 +29,7 @@ import { GovernmentsPage } from "./routes/GovernmentsPage";
 import { ParliamentPeriodsPage } from "./routes/ParliamentPeriodsPage";
 import { PartiesPage } from "./routes/PartiesPage";
 import { PartyPeriodsPage } from "./routes/PartyPeriodsPage";
+import { PartyResultsPage } from "./routes/PartyResultsPage";
 import { PeriodsPage } from "./routes/PeriodsPage";
 import { PopPeriodsPage } from "./routes/PopPeriodsPage";
 import { PopsPage } from "./routes/PopsPage";
@@ -173,6 +174,11 @@ function MainShell() {
           label: t.nav.votingBehaviour,
           path: "/election-data/voting-behaviour",
           element: <VotingBehaviourPage />,
+        },
+        {
+          label: t.nav.partyResults,
+          path: "/election-data/party-results",
+          element: <PartyResultsPage />,
         },
       ],
     },

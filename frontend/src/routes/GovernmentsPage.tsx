@@ -22,7 +22,8 @@ export function GovernmentsPage() {
   }, []);
 
   const party = (id: number) => parties.find((p) => p.id === id);
-  const sortedPeriods = [...periods].sort((a, b) => a.voting_date.localeCompare(b.voting_date));
+  // Newest period first — the list reads from today back into the past.
+  const sortedPeriods = [...periods].sort((a, b) => b.voting_date.localeCompare(a.voting_date));
 
   return (
     <>

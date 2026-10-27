@@ -40,6 +40,7 @@ export const en = {
     coalitions: "Coalitions",
     governments: "Governments",
     votingBehaviour: "Voting Behaviour",
+    partyResults: "Party Results",
   },
   auth: {
     loginTitle: "Log in",
@@ -289,6 +290,17 @@ export const en = {
     columnApproval: "Approval Share",
     totalRowLabel: "Total",
     empty: "No statements are relevant for this period yet.",
+  },
+  partyResults: {
+    pageTitle: "Party Results",
+    subtitle: "Each party's share of the national vote across periods.",
+    partySelectorLabel: "Parties",
+    fromLabel: "From",
+    toLabel: "To",
+    chartTitle: "Vote share per period",
+    empty: "No periods yet.",
+    noResultsYet: "No simulation results yet.",
+    noPartySelected: "Select at least one party to see its results.",
   },
 } as const;
 
