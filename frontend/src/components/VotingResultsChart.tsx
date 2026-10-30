@@ -85,34 +85,38 @@ export function VotingResultsChart({ parties }: VotingResultsChartProps) {
 
       {/* Change vs. previous period — its own small box per party */}
       <div style={{ display: "flex" }}>
-        {parties.map((party) => (
-          <div key={party.id} style={{ width: columnWidth, flexShrink: 0, padding: "4px 3px 0" }}>
-            <div
-              style={{
-                background: themeConfig.diagram.changeBoxBackground,
-                borderRadius: 4,
-                textAlign: "center",
-                padding: "4px 0",
-              }}
-            >
-              <Text
-                size="sm"
-                fw={600}
-                c={
-                  party.change === null
-                    ? themeConfig.diagram.dimmed
-                    : party.change > 0
-                      ? "green.7"
-                      : party.change < 0
-                        ? "red.7"
-                        : themeConfig.diagram.dimmed
-                }
+        {parties.map((party) => {
+          // Round first so the sign/color match the displayed value (0.03 → "0.0", not a green "+0.0").
+          const change = party.change === null ? null : Math.round(party.change * 10) / 10;
+          return (
+            <div key={party.id} style={{ width: columnWidth, flexShrink: 0, padding: "4px 3px 0" }}>
+              <div
+                style={{
+                  background: themeConfig.diagram.changeBoxBackground,
+                  borderRadius: 4,
+                  textAlign: "center",
+                  padding: "4px 0",
+                }}
               >
-                {party.change === null ? "—" : `${party.change > 0 ? "+" : ""}${Math.round(party.change)}`}
-              </Text>
+                <Text
+                  size="sm"
+                  fw={600}
+                  c={
+                    change === null
+                      ? themeConfig.diagram.dimmed
+                      : change > 0
+                        ? "green.7"
+                        : change < 0
+                          ? "red.7"
+                          : themeConfig.diagram.dimmed
+                  }
+                >
+                  {change === null ? "—" : `${change > 0 ? "+" : ""}${change.toFixed(1)}`}
+                </Text>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

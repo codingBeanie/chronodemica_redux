@@ -145,6 +145,7 @@ export function PartyResultsPage() {
                   data={chartData}
                   dataKey="year"
                   series={chartSeries}
+                  curveType="linear"
                   connectNulls={false}
                   withLegend={false}
                   yAxisProps={{ domain: [0, "auto"] }}
